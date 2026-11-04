@@ -1,0 +1,2012 @@
+{
+  "totalUniqueSubjects": 529,
+  "programs": {
+    "BTECH": {
+      "CSE": {
+        "1": {
+          "subjectCount": 11,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "2": {
+          "subjectCount": 9,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "3": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "4": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "5": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "6": {
+          "subjectCount": 60,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "7": {
+          "subjectCount": 80,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        }
+      },
+      "IT": {
+        "1": {
+          "subjectCount": 11,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "2": {
+          "subjectCount": 9,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "3": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "4": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "5": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "6": {
+          "subjectCount": 58,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 1
+        },
+        "7": {
+          "subjectCount": 78,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        }
+      },
+      "CST": {
+        "1": {
+          "subjectCount": 11,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "2": {
+          "subjectCount": 9,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "3": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "4": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "5": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "6": {
+          "subjectCount": 59,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 1
+        },
+        "7": {
+          "subjectCount": 80,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        }
+      },
+      "ITE": {
+        "1": {
+          "subjectCount": 11,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "2": {
+          "subjectCount": 9,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "3": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "4": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "5": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "6": {
+          "subjectCount": 58,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 1
+        },
+        "7": {
+          "subjectCount": 79,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        }
+      },
+      "ECE": {
+        "1": {
+          "subjectCount": 11,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "2": {
+          "subjectCount": 9,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "3": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "4": {
+          "subjectCount": 7,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "5": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "6": {
+          "subjectCount": 66,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "7": {
+          "subjectCount": 91,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        }
+      },
+      "EE": {
+        "1": {
+          "subjectCount": 11,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "2": {
+          "subjectCount": 9,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "3": {
+          "subjectCount": 7,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "4": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "5": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "6": {
+          "subjectCount": 69,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "7": {
+          "subjectCount": 98,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        }
+      },
+      "EEE": {
+        "1": {
+          "subjectCount": 11,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "2": {
+          "subjectCount": 9,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "3": {
+          "subjectCount": 7,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "4": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "5": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "6": {
+          "subjectCount": 70,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "7": {
+          "subjectCount": 99,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        }
+      },
+      "ICE": {
+        "1": {
+          "subjectCount": 11,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "2": {
+          "subjectCount": 9,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "3": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "4": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "5": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "6": {
+          "subjectCount": 56,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "7": {
+          "subjectCount": 77,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        }
+      },
+      "ME": {
+        "1": {
+          "subjectCount": 11,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "2": {
+          "subjectCount": 9,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "3": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "4": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "5": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "6": {
+          "subjectCount": 57,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "7": {
+          "subjectCount": 73,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        }
+      },
+      "CE": {
+        "1": {
+          "subjectCount": 11,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "2": {
+          "subjectCount": 9,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "3": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "4": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "5": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "6": {
+          "subjectCount": 36,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "7": {
+          "subjectCount": 55,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        }
+      },
+      "MAE": {
+        "1": {
+          "subjectCount": 11,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "2": {
+          "subjectCount": 9,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "3": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "4": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "5": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "6": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "7": {
+          "subjectCount": 16,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        }
+      }
+    },
+    "BCA": {
+      "BCA": {
+        "1": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 1
+        },
+        "2": {
+          "subjectCount": 8,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "3": {
+          "subjectCount": 11,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "4": {
+          "subjectCount": 10,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "5": {
+          "subjectCount": 6,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        },
+        "6": {
+          "subjectCount": 7,
+          "missingSubjectCount": 0,
+          "duplicateMappingCount": 0,
+          "subjectsWithUnitIssues": 0
+        }
+      }
+    }
+  },
+  "missingSubjectIds": [],
+  "duplicateMappings": [],
+  "subjectsWithoutUnits": [],
+  "subjectsWithUnexpectedUnitCount": [
+    {
+      "id": "65ffa3a45a59ecc450ed9f6c",
+      "name": "Software Requirements And Estimation",
+      "branch": "IT",
+      "semester": "6",
+      "unitCount": 5
+    },
+    {
+      "id": "65ffa3a45a59ecc450ed9f6c",
+      "name": "Software Requirements And Estimation",
+      "branch": "CST",
+      "semester": "6",
+      "unitCount": 5
+    },
+    {
+      "id": "65ffa3a45a59ecc450ed9f6c",
+      "name": "Software Requirements And Estimation",
+      "branch": "ITE",
+      "semester": "6",
+      "unitCount": 5
+    },
+    {
+      "id": "655b9fd0e0f5a74d26148100",
+      "name": "Bridge Course In Mathematics",
+      "branch": "BCA",
+      "semester": "1",
+      "unitCount": 2
+    }
+  ],
+  "subjectsWithoutTopics": [],
+  "duplicateSubjectNames": [
+    [
+      {
+        "id": "63946b6ebba19022397ba41a",
+        "name": "Basic Chemistry",
+        "course": "BTECH",
+        "semester": 1,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "MAE",
+          "ME"
+        ]
+      },
+      {
+        "id": "6444e5a992cfceaa45a9fce7",
+        "name": "Basic Chemistry",
+        "course": "BTECH",
+        "semester": 2,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "MAE",
+          "ME"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "63946bc7bba19022397ba41b",
+        "name": "Communications Skills",
+        "course": "BTECH",
+        "semester": 1,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "MAE",
+          "ME"
+        ]
+      },
+      {
+        "id": "6444e5d592cfceaa45a9fce8",
+        "name": "Communications Skills",
+        "course": "BTECH",
+        "semester": 2,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "MAE",
+          "ME"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "63b1407f0d17f779ef39e5a1",
+        "name": "Indian Constitution",
+        "course": "BTECH",
+        "semester": 1,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "MAE",
+          "ME"
+        ]
+      },
+      {
+        "id": "639473fdbba19022397ba422",
+        "name": "Indian Constitution",
+        "course": "BTECH",
+        "semester": 2,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "MAE",
+          "ME"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "63b140c80d17f779ef39e5a2",
+        "name": "Human Values And Ethics",
+        "course": "BTECH",
+        "semester": 1,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "MAE",
+          "ME"
+        ]
+      },
+      {
+        "id": "639473a9bba19022397ba421",
+        "name": "Human Values And Ethics",
+        "course": "BTECH",
+        "semester": 2,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "MAE",
+          "ME"
+        ]
+      },
+      {
+        "id": "6561bded3ec6c43f4d207c12",
+        "name": "Human Values And Ethics",
+        "course": "BCA",
+        "semester": 3,
+        "departments": [
+          "BCA"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "63f6ee5f56100bd7ad482091",
+        "name": "Programming In C",
+        "course": "BTECH",
+        "semester": 1,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "MAE",
+          "ME"
+        ]
+      },
+      {
+        "id": "6394743ebba19022397ba423",
+        "name": "Programming In C",
+        "course": "BTECH",
+        "semester": 2,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "MAE",
+          "ME"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "6394736bbba19022397ba420",
+        "name": "Environmental Studies",
+        "course": "BTECH",
+        "semester": 1,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "MAE",
+          "ME"
+        ]
+      },
+      {
+        "id": "6394736bbba19022397ba420",
+        "name": "Environmental Studies",
+        "course": "BTECH",
+        "semester": 2,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "MAE",
+          "ME"
+        ]
+      },
+      {
+        "id": "655df884111e075e255e547b",
+        "name": "Environmental Studies",
+        "course": "BCA",
+        "semester": 2,
+        "departments": [
+          "BCA"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "634fe28641e417e4b9f2470b",
+        "name": "Digital Logic And Computer Design",
+        "course": "BTECH",
+        "semester": 3,
+        "departments": [
+          "CSE",
+          "CST",
+          "ECE",
+          "IT",
+          "ITE"
+        ]
+      },
+      {
+        "id": "660473d0ac0493913e9dcf18",
+        "name": "Digital Logic And Computer Design",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CE",
+          "ECE",
+          "EE",
+          "ICE",
+          "ME"
+        ]
+      },
+      {
+        "id": "672645fc0ca46af8cfda48b5",
+        "name": "Digital Logic And Computer Design",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "IT",
+          "ITE",
+          "ME"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "634fc91b41e417e4b9f2470a",
+        "name": "Discrete Mathematics",
+        "course": "BTECH",
+        "semester": 3,
+        "departments": [
+          "CSE",
+          "CST",
+          "IT",
+          "ITE"
+        ]
+      },
+      {
+        "id": "655b9883e0f5a74d261480fe",
+        "name": "Discrete Mathematics",
+        "course": "BCA",
+        "semester": 1,
+        "departments": [
+          "BCA"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "635158d772f1fa1b849a2469",
+        "name": "Electromagnetic Field Theory",
+        "course": "BTECH",
+        "semester": 3,
+        "departments": [
+          "EE",
+          "EEE"
+        ]
+      },
+      {
+        "id": "64441fb3d3011c7d94c1a4e4",
+        "name": "Electromagnetic Field Theory",
+        "course": "BTECH",
+        "semester": 4,
+        "departments": [
+          "ECE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "63528c8ca471ec8b8486c3df",
+        "name": "Circuits And Systems",
+        "course": "BTECH",
+        "semester": 3,
+        "departments": [
+          "ICE"
+        ]
+      },
+      {
+        "id": "640de674f95de6c63dabc8dc",
+        "name": "Circuits And Systems",
+        "course": "BTECH",
+        "semester": 4,
+        "departments": [
+          "CSE",
+          "CST",
+          "IT",
+          "ITE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "64eb75ae726854c1464ca1c3",
+        "name": "Theory Of Machines",
+        "course": "BTECH",
+        "semester": 3,
+        "departments": [
+          "MAE",
+          "ME"
+        ]
+      },
+      {
+        "id": "6604840271f1f903e5b3afdb",
+        "name": "Theory Of Machines",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "640df4faf95de6c63dabc8dd",
+        "name": "Database Management System",
+        "course": "BTECH",
+        "semester": 4,
+        "departments": [
+          "CSE",
+          "CST",
+          "IT",
+          "ITE"
+        ]
+      },
+      {
+        "id": "6567545f6b01709d662a3111",
+        "name": "Database Management System",
+        "course": "BCA",
+        "semester": 2,
+        "departments": [
+          "BCA"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "64270c01eedb2e3fe3741932",
+        "name": "Programming In Java",
+        "course": "BTECH",
+        "semester": 4,
+        "departments": [
+          "CSE",
+          "CST",
+          "IT",
+          "ITE"
+        ]
+      },
+      {
+        "id": "66047c7e71f1f903e5b3afda",
+        "name": "Programming In Java",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "ME"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "642fde6dd3cacf48873a34c6",
+        "name": "Microprocessors And Microcontrollers",
+        "course": "BTECH",
+        "semester": 4,
+        "departments": [
+          "ECE"
+        ]
+      },
+      {
+        "id": "6507cf8a65443b935855079b",
+        "name": "Microprocessors And Microcontrollers",
+        "course": "BTECH",
+        "semester": 5,
+        "departments": [
+          "EE",
+          "EEE",
+          "ICE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "6427198ceedb2e3fe3741935",
+        "name": "Sensors And Transducers",
+        "course": "BTECH",
+        "semester": 4,
+        "departments": [
+          "ICE"
+        ]
+      },
+      {
+        "id": "6508564179487bcc19d9faab",
+        "name": "Sensors And Transducers",
+        "course": "BTECH",
+        "semester": 5,
+        "departments": [
+          "MAE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65058c8d67d00ed980e62634",
+        "name": "Software Engineering",
+        "course": "BTECH",
+        "semester": 5,
+        "departments": [
+          "CSE",
+          "CST",
+          "IT",
+          "ITE"
+        ]
+      },
+      {
+        "id": "6561e4463ec6c43f4d207c1d",
+        "name": "Software Engineering",
+        "course": "BCA",
+        "semester": 4,
+        "departments": [
+          "BCA"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "6505883e67d00ed980e62632",
+        "name": "Operating Systems",
+        "course": "BTECH",
+        "semester": 5,
+        "departments": [
+          "CSE",
+          "CST",
+          "IT",
+          "ITE"
+        ]
+      },
+      {
+        "id": "672645fc0ca46af8cfda48b3",
+        "name": "Operating Systems",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "CE",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "ME"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "6507d1e965443b935855079d",
+        "name": "Machine Design 2",
+        "course": "BTECH",
+        "semester": 5,
+        "departments": [
+          "ME"
+        ]
+      },
+      {
+        "id": "6507d30465443b935855079e",
+        "name": "Machine Design 2",
+        "course": "BTECH",
+        "semester": 5,
+        "departments": [
+          "MAE"
+        ]
+      },
+      {
+        "id": "6603cf45ab3d48e8e02710d1",
+        "name": "Machine Design 2",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "MAE",
+          "ME"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "6507d46e65443b935855079f",
+        "name": "Fluid Mechanics And Hydraulic Machines",
+        "course": "BTECH",
+        "semester": 5,
+        "departments": [
+          "ME"
+        ]
+      },
+      {
+        "id": "6603cf29ab3d48e8e02710d0",
+        "name": "Fluid Mechanics And Hydraulic Machines",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "ME"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "6508575179487bcc19d9faad",
+        "name": "Control Systems And Applications",
+        "course": "BTECH",
+        "semester": 5,
+        "departments": [
+          "MAE"
+        ]
+      },
+      {
+        "id": "672645fb0ca46af8cfda48a6",
+        "name": "Control Systems And Applications",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "MAE",
+          "ME"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65f9393472be82463f614f88",
+        "name": "Advanced Java Programming",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CSE",
+          "CST",
+          "IT",
+          "ITE"
+        ]
+      },
+      {
+        "id": "672645fd0ca46af8cfda48c0",
+        "name": "Advanced Java Programming",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "ME"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65f93bdba574c4bee84c5034",
+        "name": "Artificial Intelligence And Machine Learning",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "ME"
+        ]
+      },
+      {
+        "id": "672645fe0ca46af8cfda48d3",
+        "name": "Artificial Intelligence And Machine Learning",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "MAE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65f9a741ef615a6e1c204dad",
+        "name": "Wireless Sensor Networks",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "ME"
+        ]
+      },
+      {
+        "id": "672645f40ca46af8cfda4829",
+        "name": "Wireless Sensor Networks",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "CSE",
+          "CST",
+          "ECE",
+          "IT",
+          "ITE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65f9a190ef615a6e1c204dab",
+        "name": "Web Technologies",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CSE",
+          "CST",
+          "IT",
+          "ITE"
+        ]
+      },
+      {
+        "id": "6563283a1f650b3dd42dad78",
+        "name": "Web Technologies",
+        "course": "BCA",
+        "semester": 1,
+        "departments": [
+          "BCA"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65fd9ecf51f8ac7606bb8f5a",
+        "name": "Blockchain Technology",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "IT",
+          "ITE"
+        ]
+      },
+      {
+        "id": "672645f30ca46af8cfda4826",
+        "name": "Blockchain Technology",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "ME"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65fda10a51f8ac7606bb8f5e",
+        "name": "Data Visualization",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "ME"
+        ]
+      },
+      {
+        "id": "672645f90ca46af8cfda487d",
+        "name": "Data Visualization",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "CST",
+          "ITE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65fda14a51f8ac7606bb8f60",
+        "name": "Digital Image Processing",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE"
+        ]
+      },
+      {
+        "id": "672645fa0ca46af8cfda4890",
+        "name": "Digital Image Processing",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "EE",
+          "EEE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65fda39951f8ac7606bb8f66",
+        "name": "Embedded Linux",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "ME"
+        ]
+      },
+      {
+        "id": "672645f50ca46af8cfda4845",
+        "name": "Embedded Linux",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65fda3de51f8ac7606bb8f68",
+        "name": "Engineering Optimization",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CSE",
+          "CST"
+        ]
+      },
+      {
+        "id": "672645f90ca46af8cfda4884",
+        "name": "Engineering Optimization",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "CSE",
+          "CST",
+          "ECE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65fdb13951f8ac7606bb8f6d",
+        "name": "Introduction Of Sensors And Transducers",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "ME"
+        ]
+      },
+      {
+        "id": "672645f50ca46af8cfda4846",
+        "name": "Introduction Of Sensors And Transducers",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65fdb55a51f8ac7606bb8f74",
+        "name": "Machine Learning",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "ME"
+        ]
+      },
+      {
+        "id": "672645f20ca46af8cfda4815",
+        "name": "Machine Learning",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "ME"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65fdb59051f8ac7606bb8f76",
+        "name": "Microprocessors And Interfacing",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE"
+        ]
+      },
+      {
+        "id": "672645fc0ca46af8cfda48b6",
+        "name": "Microprocessors And Interfacing",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "CE",
+          "CSE ",
+          "CST ",
+          "IT ",
+          "ITE ",
+          "ME "
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65fdb5e551f8ac7606bb8f79",
+        "name": "Mobile Computing",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CSE",
+          "ECE"
+        ]
+      },
+      {
+        "id": "672645f60ca46af8cfda484d",
+        "name": "Mobile Computing",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "ECE",
+          "EE",
+          "EEE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65fdb7be51f8ac7606bb8f7d",
+        "name": "Network Security And Cryptography",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CSE",
+          "CST",
+          "ECE",
+          "ITE",
+          "ITE"
+        ]
+      },
+      {
+        "id": "672645f90ca46af8cfda4886",
+        "name": "Network Security And Cryptography",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "CSE",
+          "CST",
+          "ECE",
+          "ITE",
+          "ITE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "63946be0bba19022397ba41a",
+        "name": "Pattern Recognition",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE"
+        ]
+      },
+      {
+        "id": "6726464ec01f180b850e4ab6",
+        "name": "Pattern Recognition",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "ECE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65ff34035a59ecc450ed9f63",
+        "name": "Real Time Operating Systems",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE"
+        ]
+      },
+      {
+        "id": "672645f90ca46af8cfda4887",
+        "name": "Real Time Operating Systems",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "ECE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65ffa6cd5a59ecc450ed9f74",
+        "name": "Wireless Communication And Networks",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CSE",
+          "ECE",
+          "EE",
+          "EEE"
+        ]
+      },
+      {
+        "id": "672645f80ca46af8cfda487a",
+        "name": "Wireless Communication And Networks",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "IT"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "66034d40849359c8eb0d0aad",
+        "name": "Introduction To Internet Of Things",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "ME"
+        ]
+      },
+      {
+        "id": "6726464ec01f180b850e4ab7",
+        "name": "Introduction To Internet Of Things",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "ECE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65fd9c8151f8ac7606bb8f56",
+        "name": "Analog And Digital Communications",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "EEE",
+          "IT"
+        ]
+      },
+      {
+        "id": "672645fc0ca46af8cfda48b7",
+        "name": "Analog And Digital Communications",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "CE",
+          "CSE ",
+          "CST ",
+          "IT ",
+          "ITE ",
+          "ME "
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65f9a76fef615a6e1c204dae",
+        "name": "Vhdl Programming",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "ECE",
+          "EE",
+          "ITE"
+        ]
+      },
+      {
+        "id": "672645f50ca46af8cfda4843",
+        "name": "Vhdl Programming",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65fd9f1751f8ac7606bb8f5c",
+        "name": "Cmos Analog Integrated Circuit Design",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "ECE"
+        ]
+      },
+      {
+        "id": "672645f50ca46af8cfda4848",
+        "name": "Cmos Analog Integrated Circuit Design",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "ECE",
+          "EE",
+          "EEE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65fdb15a51f8ac7606bb8f6e",
+        "name": "Introduction To Power Electronics",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "ECE"
+        ]
+      },
+      {
+        "id": "672645fc0ca46af8cfda48bb",
+        "name": "Introduction To Power Electronics",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "CE",
+          "CSE ",
+          "CST ",
+          "IT ",
+          "ITE ",
+          "ME "
+        ]
+      }
+    ],
+    [
+      {
+        "id": "6604761cac0493913e9dcf19",
+        "name": "Data Structures And Algorithms",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "MAE",
+          "ME"
+        ]
+      },
+      {
+        "id": "672645fc0ca46af8cfda48bc",
+        "name": "Data Structures And Algorithms",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "CE",
+          "CSE ",
+          "CST ",
+          "ECE ",
+          "EE ",
+          "EEE ",
+          "ICE ",
+          "IT ",
+          "ITE ",
+          "ME "
+        ]
+      }
+    ],
+    [
+      {
+        "id": "660355a9849359c8eb0d0ad3",
+        "name": "Bio Medical Instrumentation",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "EE",
+          "EEE",
+          "ICE"
+        ]
+      },
+      {
+        "id": "672645fa0ca46af8cfda489c",
+        "name": "Bio Medical Instrumentation",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "ICE",
+          "IT",
+          "ITE",
+          "ME"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "66035746849359c8eb0d0adb",
+        "name": "Process Control",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "EE",
+          "ICE"
+        ]
+      },
+      {
+        "id": "672645fd0ca46af8cfda48c4",
+        "name": "Process Control",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "CE",
+          "CSE",
+          "CST",
+          "ECE",
+          "EE",
+          "EEE",
+          "IT",
+          "ITE",
+          "ME"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "66035844849359c8eb0d0ade",
+        "name": "Systems Design And Simulation",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "EEE"
+        ]
+      },
+      {
+        "id": "672645fa0ca46af8cfda4898",
+        "name": "Systems Design And Simulation",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "EEE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "65fc661100e5119cd905aca1",
+        "name": "Advanced Control Systems For Instrumentation",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "ICE"
+        ]
+      },
+      {
+        "id": "672645f70ca46af8cfda485a",
+        "name": "Advanced Control Systems For Instrumentation",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "EE",
+          "EEE",
+          "ICE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "66035490849359c8eb0d0aca",
+        "name": "Industrial Tribology",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "ME"
+        ]
+      },
+      {
+        "id": "672645f70ca46af8cfda4864",
+        "name": "Industrial Tribology",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "EE",
+          "EEE",
+          "ICE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "6603d336ab3d48e8e02710dc",
+        "name": "Mechanical Vibrations",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "ME"
+        ]
+      },
+      {
+        "id": "672645f70ca46af8cfda4863",
+        "name": "Mechanical Vibrations",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "EE",
+          "EEE",
+          "ICE"
+        ]
+      }
+    ],
+    [
+      {
+        "id": "66040d0d0fb98ef778af6ab4",
+        "name": "Robotics Engineering",
+        "course": "BTECH",
+        "semester": 6,
+        "departments": [
+          "ME"
+        ]
+      },
+      {
+        "id": "672645fe0ca46af8cfda48d1",
+        "name": "Robotics Engineering",
+        "course": "BTECH",
+        "semester": 7,
+        "departments": [
+          "MAE"
+        ]
+      }
+    ]
+  ]
+}
