@@ -17,318 +17,23 @@ type UnitLearningProps = {
   onBack: () => void;
 };
 
-const analogQuestions = [
-  {
-    question: "Define an analog signal with an example.",
-    answer:
-      "An analog signal has an amplitude that varies continuously over a specified range. Examples include microphone voltage and the output of many temperature sensors.",
-  },
-  {
-    question: "What is a digital signal?",
-    answer:
-      "A digital signal represents information using discrete amplitude levels. In binary systems, these levels represent logic 0 and logic 1.",
-  },
-  {
-    question: "Differentiate between analog and digital signals.",
-    answer:
-      "Analog signals have continuously varying amplitudes, while digital signals use discrete levels. Digital circuits can regenerate logic levels and process binary information.",
-  },
-  {
-    question: "Explain sampling, quantization and encoding.",
-    answer:
-      "Sampling measures a signal at discrete time instants. Quantization maps measured amplitudes to allowed levels. Encoding assigns a digital code to each quantized level.",
-  },
-  {
-    question: "How many codes can an 8-bit ADC represent?",
-    answer:
-      "The number of possible binary codes is 2ⁿ. For n = 8, 2⁸ = 256 distinct codes are possible.",
-  },
-];
-
-function AnalogDigitalNotes() {
-  return (
-    <div className="space-y-5">
-      <section className="rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm sm:p-7">
-        <p className="text-sm font-bold uppercase tracking-wider text-indigo-600">
-          Study notes · Topic explanation
-        </p>
-
-        <h2 className="mt-2 text-2xl font-black text-slate-900">
-          Analog and Digital Signals
-        </h2>
-
-        <h3 className="mb-2 mt-6 text-lg font-bold text-slate-900">
-          1. Introduction
-        </h3>
-
-        <p className="leading-7 text-slate-700">
-          A signal is a physical quantity that carries information. In
-          electronics, it is often represented by voltage or current that
-          changes with time. Signals are used in communication systems,
-          sensors, audio devices and control systems.
-        </p>
-
-        <h3 className="mb-2 mt-6 text-lg font-bold text-slate-900">
-          2. Analog signal
-        </h3>
-
-        <p className="leading-7 text-slate-700">
-          An analog signal can vary continuously over a specified range.
-          A sinusoidal signal may be represented as
-          x(t) = A sin(2πft + φ), where A is amplitude, f is frequency,
-          t is time and φ is phase.
-        </p>
-
-        <div className="mt-4 rounded-xl border bg-slate-50 p-4">
-          <svg
-            viewBox="0 0 320 150"
-            role="img"
-            aria-label="Conceptual analog sine waveform"
-            className="block h-auto w-full max-w-full"
-          >
-            <line
-              x1="20"
-              y1="75"
-              x2="305"
-              y2="75"
-              stroke="currentColor"
-              strokeOpacity=".45"
-            />
-            <line
-              x1="35"
-              y1="12"
-              x2="35"
-              y2="138"
-              stroke="currentColor"
-              strokeOpacity=".45"
-            />
-            <path
-              d="M35 75 C50 15 80 15 95 75 S140 135 155 75 S200 15 215 75 S260 135 275 75"
-              fill="none"
-              stroke="#4f46e5"
-              strokeWidth="3"
-            />
-            <text x="8" y="16" fontSize="10" fill="currentColor">
-              Amplitude
-            </text>
-            <text x="294" y="91" fontSize="10" fill="currentColor">
-              t
-            </text>
-          </svg>
-
-          <p className="text-sm text-slate-600">
-            Conceptual analog waveform; not to scale.
-          </p>
-        </div>
-
-        <h3 className="mb-2 mt-6 text-lg font-bold text-slate-900">
-          3. Digital signal
-        </h3>
-
-        <p className="leading-7 text-slate-700">
-          A digital signal represents information using discrete levels.
-          A binary digital system uses two logical states, commonly called
-          0 and 1. The actual voltage ranges depend on the circuit technology.
-        </p>
-
-        <div className="mt-4 rounded-xl border bg-slate-50 p-4">
-          <svg
-            viewBox="0 0 320 150"
-            role="img"
-            aria-label="Conceptual binary digital waveform"
-            className="block h-auto w-full max-w-full"
-          >
-            <line
-              x1="20"
-              y1="120"
-              x2="305"
-              y2="120"
-              stroke="currentColor"
-              strokeOpacity=".45"
-            />
-            <line
-              x1="35"
-              y1="12"
-              x2="35"
-              y2="138"
-              stroke="currentColor"
-              strokeOpacity=".45"
-            />
-            <path
-              d="M35 120 H75 V40 H115 V120 H155 V40 H215 V120 H255 V40 H295 V120"
-              fill="none"
-              stroke="#16a34a"
-              strokeWidth="3"
-              strokeLinejoin="round"
-            />
-            <text x="12" y="43" fontSize="10" fill="currentColor">
-              1
-            </text>
-            <text x="12" y="124" fontSize="10" fill="currentColor">
-              0
-            </text>
-            <text x="294" y="140" fontSize="10" fill="currentColor">
-              t
-            </text>
-          </svg>
-
-          <p className="text-sm text-slate-600">
-            Conceptual binary waveform; logic voltages depend on hardware.
-          </p>
-        </div>
-
-        <h3 className="mb-2 mt-6 text-lg font-bold text-slate-900">
-          4. Difference between analog and digital signals
-        </h3>
-
-        <div className="max-w-full overflow-x-auto">
-          <table className="w-full border-collapse text-left text-sm">
-            <thead>
-              <tr className="bg-slate-100">
-                <th className="border p-3">Basis</th>
-                <th className="border p-3">Analog</th>
-                <th className="border p-3">Digital</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                ["Amplitude", "Continuous", "Discrete levels"],
-                ["Representation", "Continuously varying", "Often binary 0 and 1"],
-                ["Processing", "Analog circuits", "Digital logic and processors"],
-                ["Example", "Microphone output", "Binary processor data"],
-              ].map(([basis, analog, digital]) => (
-                <tr key={basis}>
-                  <td className="border p-3 font-semibold">{basis}</td>
-                  <td className="border p-3">{analog}</td>
-                  <td className="border p-3">{digital}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <h3 className="mb-2 mt-6 text-lg font-bold text-slate-900">
-          5. Analog-to-digital conversion
-        </h3>
-
-        <p className="leading-7 text-slate-700">
-          An analog-to-digital converter (ADC) converts an analog input into
-          a digital representation. Its main conceptual stages are sampling,
-          quantization and encoding.
-        </p>
-
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-2 rounded-xl bg-indigo-50 p-4 text-center text-sm font-bold">
-          <span className="rounded-lg border bg-white p-3">Analog input</span>
-          <span>→</span>
-          <span className="rounded-lg border bg-white p-3">Sampling</span>
-          <span>→</span>
-          <span className="rounded-lg border bg-white p-3">Quantization</span>
-          <span>→</span>
-          <span className="rounded-lg border bg-white p-3">Encoding</span>
-        </div>
-      </section>
-
-      <section className="rounded-2xl border bg-white p-5 shadow-sm sm:p-7">
-        <h3 className="text-xl font-black text-slate-900">Solved examples</h3>
-
-        <div className="mt-5 space-y-5">
-          <div className="rounded-xl bg-slate-50 p-4">
-            <h4 className="font-bold">Example 1: Sampling interval</h4>
-
-            <p className="mt-2 leading-7">
-              <strong>Question:</strong> A signal is sampled at 8,000 Hz.
-              Find the time interval between consecutive samples.
-            </p>
-
-            <p className="mt-2 leading-7">
-              Formula: Ts = 1 / fs
-              <br />
-              Ts = 1 / 8000 seconds
-              <br />
-              Ts = 0.000125 seconds
-            </p>
-
-            <p className="mt-2 font-bold text-green-700">
-              Answer: Ts = 125 microseconds.
-            </p>
-          </div>
-
-          <div className="rounded-xl bg-slate-50 p-4">
-            <h4 className="font-bold">Example 2: Number of ADC codes</h4>
-
-            <p className="mt-2 leading-7">
-              <strong>Question:</strong> How many codes can an ideal 8-bit
-              ADC represent?
-            </p>
-
-            <p className="mt-2 leading-7">
-              Formula: Number of codes = 2ⁿ
-              <br />
-              For n = 8: 2⁸ = 256
-            </p>
-
-            <p className="mt-2 font-bold text-green-700">
-              Answer: 256 distinct codes.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-2xl border bg-white p-5 shadow-sm sm:p-7">
-        <h3 className="text-xl font-black text-slate-900">
-          Important practice questions
-        </h3>
-
-        <div className="mt-4 space-y-5">
-          {analogQuestions.map((item, index) => (
-            <div key={item.question} className="border-b pb-4 last:border-0">
-              <h4 className="font-bold text-slate-900">
-                Q{index + 1}. {item.question}
-              </h4>
-
-              <p className="mt-2 leading-7 text-slate-700">{item.answer}</p>
-            </div>
-          ))}
-        </div>
-
-        <p className="mt-3 text-sm text-slate-500">
-          These are practice questions, not verified previous-year questions.
-        </p>
-      </section>
-
-      <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-        <h3 className="font-black text-amber-950">
-          Exam preparation reminder
-        </h3>
-
-        <p className="mt-2 leading-7 text-amber-900">
-          Use these notes as learning material only. Verify topic coverage
-          against the official syllabus for your applicable university batch.
-        </p>
-      </section>
-    </div>
-  );
-}
-
 function cleanMarkdown(content: string) {
   return content
-    .replace(/\\([#*_`~>|])/g, "$1")
+    .replace(/\\([#*_\`~>|])/g, "$1")
     .replace(/\r\n/g, "\n")
     .trim();
 }
 
 function extractJokes(notes: string): string[] {
   const sectionMatch = notes.match(
-    /(?:mind[\s-]?fresh|funny\s+break|jokes?)[^\n]*\n([\s\S]*)$/i
+    /(?:^|\n)#{1,6}\s*(?:12\.\s*)?MIND FRESH BREAK[^\n]*\n([\s\S]*)$/i
   );
 
   if (!sectionMatch) return [];
 
-  const section = sectionMatch[1];
-
   const matches = [
-    ...section.matchAll(
-      /(?:^|\n)\s*(?:#{1,6}\s*)?(?:\*\*)?Joke\s*[12](?:\*\*)?\s*[:\-—]?\s*([\s\S]*?)(?=\n\s*(?:#{1,6}\s*)?(?:\*\*)?Joke\s*[12](?:\*\*)?\s*[:\-—]?|$)/gi
+    ...sectionMatch[1].matchAll(
+      /(?:^|\n)#{1,6}\s*Joke\s*[12]\s*\n([\s\S]*?)(?=\n#{1,6}\s*Joke\s*[12]\s*\n|$)/gi
     ),
   ];
 
@@ -343,11 +48,13 @@ function GeneratedNotes({
   topic,
   onCopy,
   copied,
+  isStreaming,
 }: {
   notes: string;
   topic: string;
   onCopy: () => void;
   copied: boolean;
+  isStreaming: boolean;
 }) {
   const formattedNotes = cleanMarkdown(notes);
 
@@ -360,7 +67,6 @@ function GeneratedNotes({
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-lg text-white">
                 ✨
               </span>
-
               <p className="text-sm font-bold text-indigo-700">
                 AI Study Material
               </p>
@@ -371,13 +77,15 @@ function GeneratedNotes({
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              Generated notes · Review and prepare
+              {isStreaming
+                ? "Live AI generation · Notes are appearing as they are created"
+                : "Generated notes · Review and prepare"}
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="rounded-full border border-indigo-200 bg-white px-3 py-1.5 text-xs font-bold text-indigo-700">
-              AI Generated
+              {isStreaming ? "Generating" : "AI Generated"}
             </span>
 
             <button
@@ -437,12 +145,10 @@ function GeneratedNotes({
         <div className="mt-7 rounded-xl border border-amber-200 bg-amber-50 p-4">
           <div className="flex items-start gap-3">
             <span className="text-xl">📌</span>
-
             <div>
               <h3 className="font-bold text-amber-950">
                 Important exam reminder
               </h3>
-
               <p className="mt-1 text-sm leading-6 text-amber-900">
                 AI-generated content ko official university syllabus,
                 prescribed textbooks aur class notes se verify zaroor karna.
@@ -470,10 +176,14 @@ export default function UnitLearning({
 
   const [language, setLanguage] = useState<"English" | "Hinglish">("Hinglish");
   const [generatedNotes, setGeneratedNotes] = useState("");
+  const [streamingNotes, setStreamingNotes] = useState("");
   const [notesLoadedKey, setNotesLoadedKey] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiError, setAiError] = useState("");
   const [copied, setCopied] = useState(false);
+
+  const activeNotesKeyRef = useRef("");
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const topic = topics[selectedTopic] ?? "";
 
@@ -489,8 +199,6 @@ export default function UnitLearning({
   ].join("-");
 
   const jokesKey = `${notesKey}-jokes`;
-
-  const activeNotesKeyRef = useRef(notesKey);
 
   useEffect(() => {
     setSelectedTopic(0);
@@ -519,6 +227,15 @@ export default function UnitLearning({
   useEffect(() => {
     activeNotesKeyRef.current = notesKey;
 
+    // Stop the previous topic's request when changing topic.
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+
+    setIsGenerating(false);
+    setStreamingNotes("");
+    setCopied(false);
+    setAiError("");
+
     try {
       const savedNotes = localStorage.getItem(notesKey);
       setGeneratedNotes(savedNotes || "");
@@ -527,18 +244,26 @@ export default function UnitLearning({
     }
 
     setNotesLoadedKey(notesKey);
-    setAiError("");
-    setCopied(false);
+
+    return () => {
+      abortControllerRef.current?.abort();
+    };
   }, [notesKey]);
 
   async function generateAINotes() {
     if (!topic.trim() || isGenerating) return;
 
     const requestKey = notesKey;
+    const controller = new AbortController();
+
+    abortControllerRef.current = controller;
 
     setIsGenerating(true);
+    setStreamingNotes("");
     setAiError("");
     setCopied(false);
+
+    let accumulatedNotes = "";
 
     try {
       let previousJokes: string[] = [];
@@ -554,7 +279,9 @@ export default function UnitLearning({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Accept: "text/event-stream",
         },
+        signal: controller.signal,
         body: JSON.stringify({
           subjectCode,
           subjectName,
@@ -565,25 +292,96 @@ export default function UnitLearning({
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || "Notes generate nahi ho paye.");
+        let errorMessage = "Notes generate nahi ho paye.";
+
+        try {
+          const data = await response.json();
+          errorMessage = data.error || errorMessage;
+        } catch {
+          // Keep the default message.
+        }
+
+        throw new Error(errorMessage);
       }
 
-      if (!data.notes || typeof data.notes !== "string") {
+      if (!response.body) {
+        throw new Error("Streaming response browser mein available nahi hai.");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      let buffer = "";
+      let streamCompleted = false;
+
+      function processEvent(eventBlock: string) {
+        const dataLines = eventBlock
+          .split("\n")
+          .filter((line) => line.startsWith("data:"))
+          .map((line) => line.slice(5).trim());
+
+        if (dataLines.length === 0) return;
+
+        const data = JSON.parse(dataLines.join("\n"));
+
+        if (data.type === "chunk" && typeof data.text === "string") {
+          accumulatedNotes += data.text;
+
+          if (activeNotesKeyRef.current === requestKey) {
+            setStreamingNotes(accumulatedNotes);
+          }
+        }
+
+        if (data.type === "done") {
+          streamCompleted = true;
+        }
+
+        if (data.type === "error") {
+          throw new Error(data.error || "Notes generate nahi ho paye.");
+        }
+      }
+
+      while (true) {
+        const { value, done } = await reader.read();
+
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+
+        for (const eventBlock of events) {
+          processEvent(eventBlock);
+        }
+      }
+
+      buffer += decoder.decode();
+
+      if (buffer.trim()) {
+        processEvent(buffer);
+      }
+
+      if (!streamCompleted) {
+        throw new Error(
+          "Streaming beech mein ruk gayi. Please dobara try karo."
+        );
+      }
+
+      if (!accumulatedNotes.trim()) {
         throw new Error("AI ne empty response diya. Dobara try karo.");
       }
 
       try {
-        localStorage.setItem(requestKey, data.notes);
+        localStorage.setItem(requestKey, accumulatedNotes);
       } catch {
         throw new Error(
           "Notes browser mein save nahi ho paye. Browser storage space check karo."
         );
       }
 
-      const newJokes = extractJokes(data.notes);
+      const newJokes = extractJokes(accumulatedNotes);
 
       if (newJokes.length > 0) {
         const updatedJokes = [...previousJokes, ...newJokes].slice(-10);
@@ -596,11 +394,24 @@ export default function UnitLearning({
       }
 
       if (activeNotesKeyRef.current === requestKey) {
-        setGeneratedNotes(data.notes);
+        setGeneratedNotes(accumulatedNotes);
+        setStreamingNotes("");
         setNotesLoadedKey(requestKey);
       }
     } catch (error) {
+      if (
+        error instanceof Error &&
+        error.name === "AbortError"
+      ) {
+        return;
+      }
+
       if (activeNotesKeyRef.current === requestKey) {
+        // Keep already received text visible if generation fails.
+        if (accumulatedNotes.trim()) {
+          setStreamingNotes(accumulatedNotes);
+        }
+
         setAiError(
           error instanceof Error
             ? error.message
@@ -608,7 +419,13 @@ export default function UnitLearning({
         );
       }
     } finally {
-      setIsGenerating(false);
+      if (activeNotesKeyRef.current === requestKey) {
+        setIsGenerating(false);
+      }
+
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
     }
   }
 
@@ -622,6 +439,7 @@ export default function UnitLearning({
     try {
       localStorage.removeItem(notesKey);
       setGeneratedNotes("");
+      setStreamingNotes("");
       setNotesLoadedKey(notesKey);
       setAiError("");
       setCopied(false);
@@ -631,8 +449,12 @@ export default function UnitLearning({
   }
 
   async function copyGeneratedNotes() {
+    const notesToCopy = isGenerating ? streamingNotes : generatedNotes;
+
+    if (!notesToCopy.trim()) return;
+
     try {
-      await navigator.clipboard.writeText(cleanMarkdown(generatedNotes));
+      await navigator.clipboard.writeText(cleanMarkdown(notesToCopy));
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -641,10 +463,6 @@ export default function UnitLearning({
       );
     }
   }
-
-  const isAnalogNotes =
-    subjectCode === "EC301" &&
-    topic.trim().toLowerCase() === "analog and digital signals";
 
   const currentTopicKey = `${selectedTopic}-${topic}`;
   const isCompleted = completedTopics.includes(currentTopicKey);
@@ -667,6 +485,7 @@ export default function UnitLearning({
   }
 
   const notesAreLoaded = notesLoadedKey === notesKey;
+  const displayNotes = isGenerating ? streamingNotes : generatedNotes;
 
   return (
     <main className="min-w-0 py-2">
@@ -716,7 +535,6 @@ export default function UnitLearning({
       {topics.length === 0 ? (
         <section className="rounded-2xl border bg-white p-6">
           <h2 className="text-xl font-black">Topics not added yet</h2>
-
           <p className="mt-2 leading-7 text-slate-600">
             Is unit ke topics abhi available nahi hain. Verified syllabus
             data add hone ke baad yahan topic-wise material dikhega.
@@ -848,12 +666,14 @@ export default function UnitLearning({
                     <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
 
                     <p className="text-sm font-semibold text-indigo-800">
-                      Gemini tumhare topic ke notes prepare kar raha hai...
+                      {streamingNotes
+                        ? "Notes live generate ho rahe hain. Tum padhna shuru kar sakte ho."
+                        : "Gemini se pehla response aa raha hai..."}
                     </p>
                   </div>
 
                   <p className="mt-2 text-xs text-indigo-600">
-                    Ismein thoda samay lag sakta hai. Please wait.
+                    Naya content automatically neeche appear hota rahega.
                   </p>
                 </div>
               )}
@@ -865,12 +685,13 @@ export default function UnitLearning({
               )}
             </div>
 
-            {generatedNotes && notesAreLoaded && (
+            {displayNotes && (notesAreLoaded || isGenerating) && (
               <GeneratedNotes
-                notes={generatedNotes}
+                notes={displayNotes}
                 topic={topic}
                 onCopy={copyGeneratedNotes}
                 copied={copied}
+                isStreaming={isGenerating}
               />
             )}
 
@@ -880,30 +701,28 @@ export default function UnitLearning({
               </div>
             )}
 
-            {isAnalogNotes ? (
-              <AnalogDigitalNotes />
-            ) : (
-              <div className="min-w-0 rounded-2xl border bg-white p-5 shadow-sm sm:p-7">
-                <p className="text-sm font-bold text-indigo-600">
-                  Topic {selectedTopic + 1} of {topics.length}
-                </p>
+            <div className="min-w-0 rounded-2xl border bg-white p-5 shadow-sm sm:p-7">
+              <p className="text-sm font-bold text-indigo-600">
+                Topic {selectedTopic + 1} of {topics.length}
+              </p>
 
-                <h2 className="mt-2 break-words text-2xl font-black text-slate-900">
-                  {topic}
-                </h2>
+              <h2 className="mt-2 break-words text-2xl font-black text-slate-900">
+                {topic}
+              </h2>
 
-                <div className="mt-5 rounded-xl bg-slate-50 p-4">
-                  <h3 className="font-bold text-slate-900">What to prepare</h3>
+              <div className="mt-5 rounded-xl bg-slate-50 p-4">
+                <h3 className="font-bold text-slate-900">What to prepare</h3>
 
-                  <ul className="mt-3 list-disc space-y-2 pl-5 leading-7 text-slate-700">
-                    <li>Definition and basic concept.</li>
-                    <li>Working principle and key points.</li>
-                    <li>Relevant labelled diagram, if applicable.</li>
-                    <li>Short-answer and long-answer practice.</li>
-                    <li>Numericals or solved examples, where applicable.</li>
-                  </ul>
-                </div>
+                <ul className="mt-3 list-disc space-y-2 pl-5 leading-7 text-slate-700">
+                  <li>Definition and basic concept.</li>
+                  <li>Working principle and key points.</li>
+                  <li>Relevant labelled diagram, if applicable.</li>
+                  <li>Short-answer and long-answer practice.</li>
+                  <li>Numericals or solved examples, where applicable.</li>
+                </ul>
+              </div>
 
+              {!generatedNotes && !isGenerating && (
                 <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
                   <h3 className="font-bold text-amber-950">
                     Detailed notes not added yet
@@ -915,8 +734,8 @@ export default function UnitLearning({
                     topic-specific learning material.
                   </p>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             <div className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">

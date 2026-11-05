@@ -9,8 +9,8 @@ export default function HomePage() {
   const router = useRouter();
 
   const [courseName, setCourseName] = useState<"B.Tech" | "BCA">("B.Tech");
-  const [branchName, setBranchName] = useState("CSE");
-  const [semester, setSemester] = useState("1");
+  const [branchName, setBranchName] = useState("");
+  const [semester, setSemester] = useState("");
   const [search, setSearch] = useState("");
   const [syllabusType, setSyllabusType] =
     useState<"affiliated" | "usict">("affiliated");
@@ -21,16 +21,19 @@ export default function HomePage() {
 
   const branches = selectedCourse?.branches ?? [];
 
-  const selectedBranch =
-    branches.find((branch) => branch.name === branchName) ??
-    branches[0];
+  const selectedBranch = branches.find(
+    (branch) => branch.name === branchName
+  );
 
-  const semesterData =
-    selectedBranch?.semesters.find(
-      (item) => item.semester === Number(semester)
-    );
+  const semesterData = selectedBranch?.semesters.find(
+    (item) => item.semester === Number(semester)
+  );
 
   const subjects = useMemo(() => {
+    if (!branchName || !semester) {
+      return [];
+    }
+
     const query = search.trim().toLowerCase();
 
     return (semesterData?.subjects ?? []).filter((subject) => {
@@ -40,12 +43,12 @@ export default function HomePage() {
         subject.code.toLowerCase().includes(query)
       );
     });
-  }, [semesterData, search]);
+  }, [semesterData, search, branchName, semester]);
 
   function changeCourse(value: "B.Tech" | "BCA") {
     setCourseName(value);
-    setBranchName(value === "B.Tech" ? "CSE" : "General");
-    setSemester("1");
+    setBranchName("");
+    setSemester("");
     setSearch("");
     setSyllabusType("affiliated");
   }
@@ -55,6 +58,8 @@ export default function HomePage() {
       `/subjects/${encodeURIComponent(code)}?syllabusType=${syllabusType}`
     );
   }
+
+  const selectionComplete = Boolean(branchName && semester);
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
@@ -142,7 +147,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="explore" className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
+      <section
+        id="explore"
+        className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14"
+      >
         <div className="mb-7">
           <p className="text-sm font-bold uppercase tracking-widest text-indigo-600">
             Explore your course
@@ -174,14 +182,15 @@ export default function HomePage() {
             <label className="block">
               <span className="mb-2 block text-sm font-bold">Branch</span>
               <select
-                value={selectedBranch?.name ?? ""}
+                value={branchName}
                 onChange={(event) => {
                   setBranchName(event.target.value);
-                  setSemester("1");
+                  setSemester("");
                   setSearch("");
                 }}
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
               >
+                <option value="">Select your branch</option>
                 {branches.map((branch) => (
                   <option key={branch.name} value={branch.name}>
                     {branch.name}
@@ -194,9 +203,14 @@ export default function HomePage() {
               <span className="mb-2 block text-sm font-bold">Semester</span>
               <select
                 value={semester}
-                onChange={(event) => setSemester(event.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+                disabled={!selectedBranch}
+                onChange={(event) => {
+                  setSemester(event.target.value);
+                  setSearch("");
+                }}
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
               >
+                <option value="">Choose your semester</option>
                 {(selectedBranch?.semesters ?? []).map((item) => (
                   <option key={item.semester} value={item.semester}>
                     Semester {item.semester}
@@ -220,7 +234,9 @@ export default function HomePage() {
                     : "border-slate-200 hover:border-indigo-300"
                 }`}
               >
-                <span className="block font-bold">Affiliated colleges</span>
+                <span className="block font-bold">
+                  IPU Affiliated Colleges
+                </span>
                 <span className="mt-1 block text-sm text-slate-600">
                   Syllabus for affiliated institutions
                 </span>
@@ -244,7 +260,10 @@ export default function HomePage() {
           </div>
 
           <div className="mt-6">
-            <label className="mb-2 block text-sm font-bold" htmlFor="subject-search">
+            <label
+              className="mb-2 block text-sm font-bold"
+              htmlFor="subject-search"
+            >
               Search subject
             </label>
             <input
@@ -260,18 +279,37 @@ export default function HomePage() {
         <div className="mb-5 mt-9 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h3 className="text-2xl font-black">
-              Semester {semester} subjects
+              {selectionComplete
+                ? `Semester ${semester} subjects`
+                : "Explore subjects"}
             </h3>
             <p className="mt-1 text-sm text-slate-600">
-              {courseName} · {selectedBranch?.name ?? "No branch selected"}
+              {courseName}
+              {selectedBranch ? ` · ${selectedBranch.name}` : ""}
             </p>
           </div>
-          <span className="rounded-full bg-slate-200 px-3 py-1.5 text-sm font-bold text-slate-700">
-            {subjects.length} subjects
-          </span>
+
+          {selectionComplete && (
+            <span className="rounded-full bg-slate-200 px-3 py-1.5 text-sm font-bold text-slate-700">
+              {subjects.length} subjects
+            </span>
+          )}
         </div>
 
-        {subjects.length > 0 ? (
+        {!selectionComplete ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl">
+              📚
+            </div>
+            <h4 className="mt-4 text-xl font-black">
+              Select your branch and semester
+            </h4>
+            <p className="mx-auto mt-2 max-w-xl leading-7 text-slate-600">
+              Please select your branch and choose your semester to explore
+              the available subjects.
+            </p>
+          </div>
+        ) : subjects.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {subjects.map((subject) => (
               <article
@@ -326,13 +364,6 @@ export default function HomePage() {
           Sample data ko final university syllabus na samjhein.
         </p>
       </section>
-
-      <footer className="border-t border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-7 text-sm text-slate-500 sm:px-6 md:flex-row md:items-center md:justify-between">
-          <span className="font-bold text-slate-700">StudySprint</span>
-          <span>Built for organized university exam preparation.</span>
-        </div>
-      </footer>
     </main>
   );
 }
