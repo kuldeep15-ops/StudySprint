@@ -1,35 +1,42 @@
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { NextResponse } from "next/server";
 
 function getErrorStatus(error: unknown): number {
   if (typeof error === "object" && error !== null && "status" in error) {
-    return Number(error.status);
+    return Number(error.status) || 0;
   }
 
   return 0;
 }
 
-function wait(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function isTemporaryError(error: unknown) {
+function isTemporaryError(error: unknown): boolean {
   return [500, 503, 504].includes(getErrorStatus(error));
 }
 
 export async function POST(request: Request) {
   try {
+    // 1. Check API key
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: "Gemini API key is missing. Check .env.local." },
+        { error: "Gemini API key is missing. Check your environment variables." },
         { status: 500 }
       );
     }
 
-    const body = await request.json();
+    // 2. Read and validate request
+    let body: Record<string, unknown>;
+
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid request data." },
+        { status: 400 }
+      );
+    }
 
     const subjectCode = String(body.subjectCode ?? "").trim();
     const subjectName = String(body.subjectName ?? "").trim();
@@ -45,7 +52,7 @@ export async function POST(request: Request) {
           .filter((joke: unknown) => typeof joke === "string")
           .map((joke: string) => joke.trim())
           .filter((joke: string) => joke.length > 0)
-          .slice(0, 10)
+          .slice(-10)
       : [];
 
     if (!subjectCode || !subjectName || !unitTitle || !topic) {
@@ -67,57 +74,47 @@ export async function POST(request: Request) {
       );
     }
 
+    // 3. Initialize Gemini
     const ai = new GoogleGenAI({ apiKey });
 
+    // 4. Language instructions
     const languageInstructions =
       language === "Hinglish"
         ? `
-Write explanations in natural, easy-to-understand Hinglish.
+Write in natural, easy-to-understand Hinglish.
 Use Roman Hindi mixed naturally with English technical terms.
-
-Do not use Devanagari Hindi.
-
-Keep all topic headings, subtopic headings, technical terms,
-formula names, mathematical symbols and diagram labels in English.
-
-Explain difficult concepts as a patient teacher would explain
-them to a beginner.
+Never use Devanagari Hindi.
+Keep all headings, technical terms, formulas and diagram labels in English.
+Explain difficult concepts as a patient teacher would explain them to a beginner.
 `
         : `
-Write explanations in simple, clear and natural English.
-
-Keep technical terminology accurate, but explain every difficult
-technical term in student-friendly language.
+Write in simple, clear and natural English.
+Keep technical terminology accurate.
+Explain every difficult technical term in student-friendly language.
 `;
 
+    // 5. Previous jokes instructions
     const previousJokesInstruction =
       previousJokes.length > 0
         ? `
-PREVIOUSLY USED JOKES — DO NOT REPEAT:
-
+Previously used jokes (DO NOT REPEAT):
 ${JSON.stringify(previousJokes)}
 
-Do not repeat these jokes, their punchlines, or slightly modified
-versions of the same jokes.
-
-Create two completely different jokes with fresh setups
-and different punchlines.
+Create exactly two completely different jokes.
+Do not reuse their punchlines or slightly modified versions.
 `
         : `
-Create two original, clean, funny and light-hearted jokes.
-
-They must be general mind-fresh jokes, not related to the topic.
+Create exactly two original, clean, funny and light-hearted jokes.
 `;
 
+    // 6. Balanced notes prompt
     const prompt = `
-You are an excellent B.Tech engineering professor,
-a patient personal tutor and an expert university examination guide.
+You are an excellent B.Tech engineering professor, patient personal tutor
+and university examination guide.
 
 Your job is to TEACH the student, not merely provide information.
-
-Assume the student may be a beginner who needs concepts explained
-from the very beginning. Make the notes understandable,
-academically accurate and useful for university examinations.
+Assume the student may be a beginner.
+Make the notes academically accurate, structured and useful for university examinations.
 
 ==================================================
 SUBJECT DETAILS
@@ -135,70 +132,47 @@ LANGUAGE
 ${languageInstructions}
 
 Important:
-- All main headings must be in English.
-- All subtopic headings must be in English.
-- Technical terms must remain in English.
-- Mathematical symbols and formulas must remain standard.
-- Do not randomly switch between languages.
-- Keep explanations natural and easy to follow.
+- All main and subheadings must be in English.
+- Technical terms and mathematical symbols must remain in English.
+- Do not randomly switch languages.
+- Keep explanations natural and easy to understand.
 
 ==================================================
-1. CONTENT DEPTH AND NOTES LENGTH
+1. CONTENT DEPTH
 ==================================================
 
-First analyse the actual topic and identify its important
-concepts and subtopics.
+Target approximately 1200–2000 words for a normal topic.
 
-Choose the depth according to the topic's complexity.
+Adjust length according to actual topic complexity:
+- Simple topics may need fewer words.
+- Complex topics may need additional explanation.
 
-A. Small or single-concept topic:
-Aim for approximately 1200–1600 words.
-
-B. Topic containing several important subtopics:
-Aim for approximately 2500–3500 words.
-
-C. Technically complex topic:
-Provide additional explanation wherever necessary.
-Do not omit important concepts simply to reduce length.
-
-These are approximate targets, not rigid limits.
-
-A page count depends on font, spacing and screen size.
-Focus on sufficient educational content rather than claiming
-an exact number of pages.
-
-IMPORTANT:
+Rules:
 - Do not add meaningless filler.
-- Do not repeat the same explanation unnecessarily.
-- Do not skip important subtopics.
-- Do not give a short summary when detailed notes are required.
-- Cover the topic according to its actual academic importance.
+- Do not repeat explanations unnecessarily.
+- Do not skip important concepts.
+- Prioritise understanding and academic accuracy.
 
 ==================================================
-2. TEACHING AND EXPLANATION STYLE
+2. TEACHING STYLE
 ==================================================
 
-Use a balanced combination of paragraphs, numbered points,
-examples, formulas and comparison tables.
+Use a balanced combination of:
+- Meaningful paragraphs.
+- Numbered points.
+- Examples.
+- Formulas.
+- Comparison tables.
+- Diagrams wherever useful.
 
-NEVER write the entire explanation as short bullet points.
+For every important concept explain:
+1. What it means.
+2. Why it is important.
+3. How it works.
+4. A relevant example wherever useful.
 
-NEVER write huge paragraphs without proper structure.
-
-For every important concept:
-
-1. Start with a clear explanation.
-2. Explain what it means.
-3. Explain why it is important.
-4. Explain how it works.
-5. Give an example wherever useful.
-
-When using numbered points, explain each important point
-in approximately 2–5 meaningful sentences.
-
-Do not write unexplained keywords as answers.
-
-Write as if a teacher is explaining the topic on a classroom board.
+Do not write everything as short bullet points.
+Avoid huge paragraphs without structure.
 
 ==================================================
 3. STRUCTURE OF STUDY NOTES
@@ -212,26 +186,26 @@ Explain:
 - What the topic is.
 - Why it is studied.
 - Where it is used.
-- Why it matters in engineering.
+- Its importance in engineering.
 
 Start with a meaningful introductory paragraph.
 
 ## 2. Basic Concepts and Fundamentals
 
-Explain the prerequisite knowledge needed to understand the topic.
+Explain the prerequisite knowledge required to understand the topic.
 
 For every important term:
 - Give its correct definition.
 - Explain its meaning in simple language.
-- Provide a small example wherever useful.
+- Provide an example wherever useful.
 
 Do not assume the student already understands advanced terminology.
 
 ## 3. Detailed Explanation
 
-Divide the topic into logical and meaningful subtopics.
+Divide the topic into logical subtopics.
 
-For each important subtopic, use this structure:
+For each important subtopic use:
 
 ### Subtopic Name
 
@@ -239,16 +213,15 @@ For each important subtopic, use this structure:
 Explain the concept in simple language.
 
 **Detailed Explanation:**
-Explain how and why the concept works through
-well-structured paragraphs.
+Explain how and why the concept works.
 
 **Important Points:**
-Use numbered points and explain each important point.
+Use numbered points and explain them.
 
 **Example:**
-Provide a relevant practical or engineering example.
+Give a relevant practical or engineering example.
 
-Cover all important subtopics without artificial repetition.
+Cover all important subtopics without unnecessary repetition.
 
 ## 4. Working Principle / Operation
 
@@ -259,43 +232,32 @@ For each step:
 2. Explain why it happens.
 3. Explain what happens next.
 
-Make the complete sequence easy to understand.
-
-If the topic is theoretical and has no separate working process,
-use this section for its important mechanism or conceptual process.
+For theoretical topics, explain the important mechanism or conceptual process.
 
 ## 5. Important Definitions and Key Points
 
-Provide exam-relevant definitions.
-
-Definitions must be accurate and understandable.
-
-Explain important terms instead of merely listing them.
+Provide accurate, exam-relevant definitions.
+Explain important terms instead of merely listing keywords.
 
 ## 6. Formulas and Mathematical Concepts
 
 Include only relevant and verified formulas.
 
 For every important formula:
-
-1. Write the formula using correct LaTeX.
+1. Write it using correct LaTeX.
 2. Explain what it calculates.
-3. Explain every symbol separately.
+3. Explain every symbol.
 4. Mention units wherever applicable.
-5. Explain when the formula is used.
-6. Explain why it is appropriate for the given concept.
+5. Explain when it is used.
 
-Use these formats:
+Use:
+Inline: $V = IR$
 
-Inline formula: $V = IR$
-
-Display formula:
-
+Display:
 $$
 V = IR
 $$
 
-Use only valid mathematical relationships.
 Never invent a formula.
 
 ## 7. Diagrams and Visual Explanation
@@ -304,16 +266,13 @@ Include relevant diagrams wherever they improve understanding.
 
 Use:
 - Simple labelled text diagrams.
-- Flowcharts where appropriate.
+- Flowcharts.
 - Clearly structured steps and arrows.
-- Mermaid diagrams only when they genuinely help.
+- Mermaid diagrams only when genuinely useful.
 
-Use English labels in diagrams.
+Use English labels.
 
-After every diagram, explain:
-- What each important block represents.
-- The direction of operation.
-- How the complete diagram works.
+After every diagram, explain its important blocks, direction of operation and working.
 
 Do not force diagrams into topics where they are unnecessary.
 
@@ -321,155 +280,104 @@ Do not force diagrams into topics where they are unnecessary.
 
 Explain relevant engineering and real-world applications.
 
-For each important application, explain how the concept
-is actually used.
-
+For important applications, explain how the concept is actually used.
 Avoid simply listing application names.
 
 ## 9. Solved Examples and Numericals
 
 First determine whether the topic genuinely involves calculations.
 
-If meaningful numerical applications exist, provide 3–5
-useful solved examples depending on the topic.
+If meaningful numerical applications exist, provide 2–3 useful solved examples.
 
 Do not force irrelevant numericals into theoretical topics.
 
-FOR EVERY NUMERICAL, FOLLOW THIS TEACHING FORMAT:
+FOR EACH NUMERICAL USE THIS FORMAT:
 
 ### Numerical 1: Question
 
 Write the complete question clearly.
 
 **Step 1: Understand the Question**
-
-Explain what information is provided and what needs to be calculated.
+Explain what information is given and what needs to be calculated.
 
 **Step 2: Given Data**
-
 List every given value with its correct symbol and unit.
 
 **Step 3: Required**
-
-Clearly mention the unknown quantity.
+Mention the unknown quantity.
 
 **Step 4: Concept Used**
-
-Explain the concept needed to solve the question.
-
-Explain WHY this concept applies.
+Explain the concept and why it applies.
 
 **Step 5: Formula**
-
 Write the correct formula using LaTeX.
-
-Explain:
-- What the formula calculates.
-- What every symbol means.
-- Which units are used.
-- Why this formula is appropriate.
+Explain its symbols and units.
 
 **Step 6: Substitution**
-
 Place the given values into the formula.
-Show the substitution clearly.
 
 **Step 7: Detailed Calculation**
-
 Solve one mathematical step at a time.
-
-Show intermediate calculations.
-
-Explain important operations such as:
-- Addition and subtraction.
-- Multiplication and division.
-- Squares and square roots.
-- Logarithms.
-- Unit conversions.
-- Negative values and signs.
-
-Never combine several difficult calculations into one unexplained line.
+Show important intermediate calculations.
+Explain unit conversions wherever necessary.
 
 **Step 8: Final Answer**
-
 Highlight the final answer with the correct unit.
 
 **Step 9: Understand the Result**
-
 Explain what the answer means in the original question.
 
-Mention common mistakes wherever relevant.
-
-NUMERICAL QUALITY RULES:
-
+Numerical quality rules:
 - Verify arithmetic carefully.
 - Verify dimensions and units.
 - Never use inconsistent units.
-- Do not skip important intermediate steps.
+- Do not skip important calculation steps.
 - Never give an unexplained final answer.
-- Explain why each important mathematical operation is performed.
-- Do not confuse the units of an error metric with
-  the units of the original measured quantity.
+- Never invent numerical data or formulas.
 
-If the topic has no meaningful numerical application,
-provide relevant conceptual worked examples instead.
+If the topic has no meaningful numerical application, provide relevant conceptual worked examples instead.
 
 ==================================================
-10. IMPORTANT LONG-ANSWER QUESTIONS WITH ANSWERS
+10. IMPORTANT UNIVERSITY EXAM QUESTIONS
 ==================================================
 
-Provide 8–9 important, non-repetitive and relevant
-university examination questions.
+Provide 5–6 important, non-repetitive and relevant university examination questions.
 
-Questions should cover different important areas of the topic.
+Cover different important areas of the topic.
+Do not create duplicate questions just to reach the target.
 
-Do not create duplicate questions just to reach the target number.
-
-Every answer must be sufficiently detailed for a descriptive
-B.Tech university examination.
+Every answer must be sufficiently detailed for a descriptive B.Tech university examination.
 
 MANDATORY ANSWER FORMAT:
 
 ### Q1. Write the question clearly.
 
 **Introduction:**
-
 Start with a meaningful introductory paragraph.
 Define the concept and explain its importance.
 
 **Detailed Explanation:**
-
 Explain the concept through connected paragraphs.
 Explain WHY and HOW, not only WHAT.
 
 **Important Points / Working / Characteristics:**
-
 Use numbered points wherever appropriate.
-
 Explain every important point properly.
-Do not simply list keywords.
 
 **Example:**
-
 Include a relevant example wherever useful.
 
 **Diagram / Formula / Comparison:**
-
-Include a relevant diagram, formula or comparison table
-when required by the question.
-
+Include a relevant diagram, formula or comparison table when required.
 Explain it properly.
 
 **Advantages and Limitations:**
-
 Include these only when relevant.
 
 **Conclusion:**
-
 End with a short and meaningful conclusion.
 
-ADDITIONAL RULES:
-
+Additional rules:
 - Use paragraphs and numbered points together.
 - Keep answers logically connected.
 - Avoid extremely short answers.
@@ -477,34 +385,30 @@ ADDITIONAL RULES:
 - Use comparison tables for difference-based questions.
 - Explain comparisons instead of listing unexplained words.
 - Make answers suitable for university theory examinations.
-- Never claim a question is from a previous-year paper
-  unless verified PYQ information is provided.
+- Never claim a question is from a previous-year paper unless verified PYQ information is provided.
 
 ==================================================
 11. QUICK REVISION
 ==================================================
 
-Summarise the most important concepts, definitions,
-formulas and facts.
+Summarise the most important:
+- Concepts.
+- Definitions.
+- Formulas.
+- Facts.
+- Important differences.
 
 Use short but meaningful points.
-
-Do not introduce new concepts in this section.
+Do not introduce new concepts here.
 
 ==================================================
 12. MIND FRESH BREAK 😂
 ==================================================
 
-This section is extremely important.
+At the absolute end of the complete notes, provide EXACTLY TWO funny, general, light-hearted jokes.
 
-At the absolute end of the complete notes, provide
-EXACTLY TWO funny, general, light-hearted jokes.
-
-THE JOKES MUST NOT BE RELATED TO STUDIES.
-
-Do NOT make jokes about:
-- The current topic.
-- Engineering.
+The jokes must NOT be related to:
+- Studies or engineering.
 - Subjects or chapters.
 - Teachers or professors.
 - Exams or marks.
@@ -512,18 +416,7 @@ Do NOT make jokes about:
 - Formulas or numericals.
 - College or classrooms.
 
-Instead, use everyday funny situations such as:
-- Laziness.
-- Sleep.
-- Food.
-- Friends.
-- Shopping.
-- Mobile phones.
-- Family conversations.
-- Daily-life confusion.
-- Funny misunderstandings.
-
-The purpose is to make the student smile and refresh their mind.
+Use everyday situations such as sleep, food, friends, shopping, mobile phones, family conversations or funny misunderstandings.
 
 Use this exact format:
 
@@ -534,15 +427,12 @@ Use this exact format:
 [Second original general funny joke] 😂
 
 JOKE RULES:
-
 1. Exactly TWO jokes.
-2. Both must be unrelated to studies and the subject.
-3. Both must be clean and student-friendly.
-4. Both must have different setups and punchlines.
-5. Make them genuinely funny and natural.
-6. Do not repeat previously used jokes.
-7. Generate fresh jokes on every regeneration.
-8. Do not add any text, heading or section after Joke 2.
+2. Both must be clean and student-friendly.
+3. Both must have different setups and punchlines.
+4. Do not repeat previously used jokes.
+5. Generate fresh jokes on every regeneration.
+6. Do not add any text after Joke 2.
 
 ${previousJokesInstruction}
 
@@ -551,28 +441,29 @@ FINAL QUALITY CHECK
 ==================================================
 
 Before responding, silently verify:
-
 1. Are all important subtopics covered?
 2. Can a beginner understand the explanations?
 3. Are paragraphs and numbered points balanced?
 4. Are formulas correct and symbols explained?
 5. Are numerical calculations fully explained?
-6. Are long answers detailed enough for university exams?
+6. Are exam answers sufficiently detailed?
 7. Are examples relevant?
 8. Are diagrams explained properly?
-9. Are there exactly two general mind-fresh jokes?
-10. Are the jokes completely unrelated to studies?
+9. Are there exactly two general jokes?
+10. Are the jokes unrelated to studies?
 11. Are all headings in English?
-12. Is there unnecessary repetition or filler?
-13. Is the Markdown properly formatted?
-14. Are mathematical expressions written using valid LaTeX?
+12. Is there unnecessary repetition?
+13. Is Markdown properly formatted?
+14. Are mathematical expressions valid LaTeX?
 
 Return only the complete study notes in properly formatted Markdown.
-
 Do not include an introductory message outside the notes.
 Do not mention these instructions.
 `;
 
+    // 7. Models and fallback strategy
+    // Primary model is tried first.
+    // Fallback models are used only for temporary server errors.
     const models = [
       "gemini-3.8-flash",
       "gemini-3.6-flash",
@@ -582,50 +473,44 @@ Do not mention these instructions.
     let lastError: unknown;
 
     for (const model of models) {
-      const attempts = model === models[0] ? 2 : 1;
+      try {
+        console.log(`Starting notes generation with ${model}`);
 
-      for (let attempt = 1; attempt <= attempts; attempt++) {
-        try {
-          console.log(
-            `Trying notes generation with ${model}, attempt ${attempt}`
-          );
-
-          const response = await ai.models.generateContent({
-            model,
-            contents: prompt,
-            config: {
-              maxOutputTokens: 16000,
+        const response = await ai.models.generateContent({
+          model,
+          contents: prompt,
+          config: {
+            maxOutputTokens: 10000,
+            thinkingConfig: {
+              thinkingLevel: ThinkingLevel.LOW,
             },
-          });
+          },
+        });
 
-          const notes = response.text?.trim();
+        const notes = response.text?.trim();
 
-          if (!notes) {
-            throw new Error("Gemini returned an empty response.");
-          }
-
-          console.log(`Notes generated successfully using ${model}`);
-
-          return NextResponse.json({
-            notes,
-            model,
-            language,
-          });
-        } catch (error) {
-          lastError = error;
-
-          if (!isTemporaryError(error)) {
-            throw error;
-          }
-
-          console.warn(
-            `${model} temporarily unavailable. Status: ${getErrorStatus(error)}`
-          );
-
-          if (attempt < attempts) {
-            await wait(1200);
-          }
+        if (!notes) {
+          throw new Error("Gemini returned an empty response.");
         }
+
+        console.log(`Notes generated successfully using ${model}`);
+
+        return NextResponse.json({
+          notes,
+          model,
+          language,
+        });
+      } catch (error) {
+        lastError = error;
+
+        // Do not waste time trying other models for non-temporary errors.
+        if (!isTemporaryError(error)) {
+          throw error;
+        }
+
+        console.warn(
+          `${model} temporarily unavailable. Status: ${getErrorStatus(error)}`
+        );
       }
     }
 
@@ -639,7 +524,7 @@ Do not mention these instructions.
       return NextResponse.json(
         {
           error:
-            "All Gemini models are temporarily busy. Please wait a minute and try again.",
+            "Gemini models are temporarily busy. Please wait a little and try again.",
         },
         { status: 503 }
       );
