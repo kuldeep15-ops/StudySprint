@@ -3,6 +3,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { courses } from "./components/data/courses";
 
 export default function HomePage() {
@@ -83,9 +84,18 @@ export default function HomePage() {
             </span>
           </button>
 
-          <span className="hidden rounded-full border border-indigo-100 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 sm:inline-flex">
-            GGSIPU / IPU
-          </span>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              href="/saved-notes"
+              className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 sm:px-4 sm:text-sm"
+            >
+              ♡ Saved Notes
+            </Link>
+
+            <span className="hidden rounded-full border border-indigo-100 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 sm:inline-flex">
+              GGSIPU / IPU
+            </span>
+          </div>
         </div>
       </header>
 

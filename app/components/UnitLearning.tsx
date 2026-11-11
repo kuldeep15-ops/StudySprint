@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
+import { getSavedNotes, saveNote } from "./savedNotes";
 
 type UnitLearningProps = {
   subjectCode: string;
@@ -49,12 +50,16 @@ function GeneratedNotes({
   onCopy,
   copied,
   isStreaming,
+  onSave,
+  isSaved,
 }: {
   notes: string;
   topic: string;
   onCopy: () => void;
   copied: boolean;
   isStreaming: boolean;
+  onSave: () => void;
+  isSaved: boolean;
 }) {
   const formattedNotes = cleanMarkdown(notes);
 
@@ -83,7 +88,7 @@ function GeneratedNotes({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-indigo-200 bg-white px-3 py-1.5 text-xs font-bold text-indigo-700">
               {isStreaming ? "Generating" : "AI Generated"}
             </span>
@@ -94,6 +99,16 @@ function GeneratedNotes({
             >
               {copied ? "✓ Copied" : "Copy notes"}
             </button>
+
+            {!isStreaming && (
+              <button
+                onClick={onSave}
+                disabled={isSaved}
+                className="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-indigo-700 disabled:cursor-default disabled:bg-green-600"
+              >
+                {isSaved ? "✓ Saved" : "♡ Save Notes"}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -181,6 +196,7 @@ export default function UnitLearning({
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiError, setAiError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
   const activeNotesKeyRef = useRef("");
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -227,7 +243,6 @@ export default function UnitLearning({
   useEffect(() => {
     activeNotesKeyRef.current = notesKey;
 
-    // Stop the previous topic's request when changing topic.
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
 
@@ -239,8 +254,12 @@ export default function UnitLearning({
     try {
       const savedNotes = localStorage.getItem(notesKey);
       setGeneratedNotes(savedNotes || "");
+
+      const savedLibraryNotes = getSavedNotes();
+      setIsSaved(savedLibraryNotes.some((item) => item.id === notesKey));
     } catch {
       setGeneratedNotes("");
+      setIsSaved(false);
     }
 
     setNotesLoadedKey(notesKey);
@@ -397,17 +416,16 @@ export default function UnitLearning({
         setGeneratedNotes(accumulatedNotes);
         setStreamingNotes("");
         setNotesLoadedKey(requestKey);
+        setIsSaved(
+          getSavedNotes().some((item) => item.id === requestKey)
+        );
       }
     } catch (error) {
-      if (
-        error instanceof Error &&
-        error.name === "AbortError"
-      ) {
+      if (error instanceof Error && error.name === "AbortError") {
         return;
       }
 
       if (activeNotesKeyRef.current === requestKey) {
-        // Keep already received text visible if generation fails.
         if (accumulatedNotes.trim()) {
           setStreamingNotes(accumulatedNotes);
         }
@@ -429,6 +447,38 @@ export default function UnitLearning({
     }
   }
 
+  function handleSaveNotes() {
+    if (!generatedNotes.trim() || isGenerating || isSaved) return;
+
+    const result = saveNote({
+      id: notesKey,
+      subjectCode,
+      subjectName,
+      unitTitle,
+      topic,
+      language,
+      notes: generatedNotes,
+      savedAt: new Date().toISOString(),
+    });
+
+    if (result) {
+      setIsSaved(true);
+      setAiError("");
+    } else {
+      const alreadySaved = getSavedNotes().some(
+        (item) => item.id === notesKey
+      );
+
+      if (alreadySaved) {
+        setIsSaved(true);
+      } else {
+        setAiError(
+          "Notes save nahi ho paye. Browser storage space check karo."
+        );
+      }
+    }
+  }
+
   function clearCurrentNotes() {
     const confirmed = window.confirm(
       "Kya tum is topic ke saved notes delete karna chahte ho?"
@@ -443,6 +493,7 @@ export default function UnitLearning({
       setNotesLoadedKey(notesKey);
       setAiError("");
       setCopied(false);
+      setIsSaved(false);
     } catch {
       setAiError("Saved notes clear nahi ho paye. Dobara try karo.");
     }
@@ -692,6 +743,8 @@ export default function UnitLearning({
                 onCopy={copyGeneratedNotes}
                 copied={copied}
                 isStreaming={isGenerating}
+                onSave={handleSaveNotes}
+                isSaved={isSaved}
               />
             )}
 
