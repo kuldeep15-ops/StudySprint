@@ -48,6 +48,7 @@ function GeneratedNotes({
   notes,
   topic,
   onCopy,
+  onShare,
   copied,
   isStreaming,
   onSave,
@@ -56,6 +57,7 @@ function GeneratedNotes({
   notes: string;
   topic: string;
   onCopy: () => void;
+  onShare: () => void;
   copied: boolean;
   isStreaming: boolean;
   onSave: () => void;
@@ -99,6 +101,15 @@ function GeneratedNotes({
             >
               {copied ? "✓ Copied" : "Copy notes"}
             </button>
+
+            {!isStreaming && (
+              <button
+                onClick={onShare}
+                className="rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm font-bold text-green-700 transition hover:bg-green-100"
+              >
+                ↗ Share Notes
+              </button>
+            )}
 
             {!isStreaming && (
               <button
@@ -515,6 +526,60 @@ export default function UnitLearning({
     }
   }
 
+  async function shareGeneratedNotes() {
+    if (!generatedNotes.trim() || isGenerating) return;
+
+    setAiError("");
+
+    try {
+      const response = await fetch("/api/share-notes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          subjectName,
+          unitTitle,
+          topic,
+          content: cleanMarkdown(generatedNotes),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.id) {
+        throw new Error(data.error || "Share link create nahi ho paya.");
+      }
+
+      const shareUrl = `${window.location.origin}/share/${data.id}`;
+
+      if (
+        typeof navigator !== "undefined" &&
+        typeof navigator.share === "function"
+      ) {
+        await navigator.share({
+          title: `${topic} - StudySprint`,
+          text: `${subjectName} | ${unitTitle}\nStudySprint par ye notes dekho:`,
+          url: shareUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+
+        window.alert(
+          "Share link copy ho gaya! Ab WhatsApp par paste karke bhej do."
+        );
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
+
+      setAiError(
+        error instanceof Error
+          ? error.message
+          : "Share link create nahi ho paya. Dobara try karo."
+      );
+    }
+  }
+
   const currentTopicKey = `${selectedTopic}-${topic}`;
   const isCompleted = completedTopics.includes(currentTopicKey);
 
@@ -741,6 +806,7 @@ export default function UnitLearning({
                 notes={displayNotes}
                 topic={topic}
                 onCopy={copyGeneratedNotes}
+                onShare={shareGeneratedNotes}
                 copied={copied}
                 isStreaming={isGenerating}
                 onSave={handleSaveNotes}
