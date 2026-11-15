@@ -1,7 +1,7 @@
 
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { NextResponse } from "next/server";
-import { createHmac, randomUUID } from "crypto";
+import { createHash, createHmac, randomUUID } from "crypto";
 import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
 import { createSupabaseServerClient } from "@/app/lib/supabaseServer";
 
@@ -9,6 +9,7 @@ export const maxDuration = 300;
 
 const RATE_LIMIT_WINDOW_SECONDS = 60 * 60;
 const STUDENT_FREE_LIMIT = 7;
+const PROMPT_VERSION = "notes-v2";
 
 const MODELS = [
   { name: "gemini-3.5-flash-lite", timeout: 90_000 },
@@ -43,6 +44,91 @@ function getTokenCount(value: number | undefined | null): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function getCacheKey(
+  subjectCode: string,
+  subjectName: string,
+  unitTitle: string,
+  topic: string,
+  language: string
+): string {
+  const normalized = [
+    PROMPT_VERSION,
+    subjectCode,
+    subjectName,
+    unitTitle,
+    topic,
+    language,
+  ]
+    .map((value) => value.trim().toLowerCase())
+    .join("|");
+
+  return createHash("sha256").update(normalized).digest("hex");
+}
+
+async function getCachedNotes(cacheKey: string): Promise<{
+  notes: string;
+  model: string | null;
+} | null> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("ai_notes_cache")
+      .select("notes, model")
+      .eq("cache_key", cacheKey)
+      .maybeSingle();
+
+    if (error) {
+      console.error("AI cache lookup failed:", error.message);
+      return null;
+    }
+
+    if (!data || typeof data.notes !== "string" || !data.notes.trim()) {
+      return null;
+    }
+
+    return {
+      notes: data.notes,
+      model: data.model ?? null,
+    };
+  } catch (error) {
+    console.error("AI cache lookup error:", error);
+    return null;
+  }
+}
+
+async function saveCachedNotes(
+  cacheKey: string,
+  subjectCode: string,
+  unitTitle: string,
+  topic: string,
+  language: string,
+  notes: string,
+  model: string
+): Promise<void> {
+  try {
+    const { error } = await supabaseAdmin
+      .from("ai_notes_cache")
+      .upsert(
+        {
+          cache_key: cacheKey,
+          subject_code: subjectCode,
+          unit_title: unitTitle,
+          topic,
+          language,
+          notes,
+          model,
+        },
+        { onConflict: "cache_key" }
+      );
+
+    if (error) {
+      console.error("AI cache save failed:", error.message);
+    }
+  } catch (error) {
+    console.error("AI cache save error:", error);
+  }
+}
+
+// UPDATED: NULL token values are converted to 0 before database update.
 async function updateGenerationLog(
   logId: string | null,
   data: Record<string, unknown>
@@ -50,9 +136,19 @@ async function updateGenerationLog(
   if (!logId) return;
 
   try {
+    const safeData = {
+      ...data,
+      input_tokens:
+        typeof data.input_tokens === "number" ? data.input_tokens : 0,
+      output_tokens:
+        typeof data.output_tokens === "number" ? data.output_tokens : 0,
+      total_tokens:
+        typeof data.total_tokens === "number" ? data.total_tokens : 0,
+    };
+
     const { error } = await supabaseAdmin
       .from("ai_generation_logs")
-      .update(data)
+      .update(safeData)
       .eq("id", logId);
 
     if (error) {
@@ -60,6 +156,39 @@ async function updateGenerationLog(
     }
   } catch (error) {
     console.error("Generation log update error:", error);
+  }
+}
+
+// UPDATED: Initial log insertion also gets safe default token values.
+async function insertGenerationLog(
+  data: Record<string, unknown>
+): Promise<string | null> {
+  try {
+    const safeData = {
+      ...data,
+      input_tokens:
+        typeof data.input_tokens === "number" ? data.input_tokens : 0,
+      output_tokens:
+        typeof data.output_tokens === "number" ? data.output_tokens : 0,
+      total_tokens:
+        typeof data.total_tokens === "number" ? data.total_tokens : 0,
+    };
+
+    const { data: result, error } = await supabaseAdmin
+      .from("ai_generation_logs")
+      .insert(safeData)
+      .select("id")
+      .single();
+
+    if (error) {
+      console.error("Generation log insert failed:", error.message);
+      return null;
+    }
+
+    return result.id;
+  } catch (error) {
+    console.error("Generation log insert error:", error);
+    return null;
   }
 }
 
@@ -84,6 +213,27 @@ async function updateStudentUsage(
   } catch (error) {
     console.error("Student AI usage update error:", error);
     return false;
+  }
+}
+
+async function getStudentRemainingCredits(studentId: string): Promise<number> {
+  try {
+    const { count, error } = await supabaseAdmin
+      .from("student_ai_usage")
+      .select("id", { count: "exact", head: true })
+      .eq("student_id", studentId)
+      .eq("feature", "ai_notes")
+      .in("status", ["reserved", "completed"]);
+
+    if (error) {
+      console.error("Student credit count failed:", error.message);
+      return 0;
+    }
+
+    return Math.max(0, STUDENT_FREE_LIMIT - (count ?? 0));
+  } catch (error) {
+    console.error("Student credit count error:", error);
+    return 0;
   }
 }
 
@@ -171,8 +321,62 @@ async function checkGenerationRateLimit(
   }
 }
 
+function createNotesStream(
+  notes: string,
+  model: string,
+  language: string,
+  remaining: number,
+  headers: Record<string, string> = {}
+): Response {
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const send = (data: Record<string, unknown>) => {
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify(data)}\n\n`)
+        );
+      };
+
+      try {
+        const chunkSize = 1500;
+
+        for (let i = 0; i < notes.length; i += chunkSize) {
+          send({
+            type: "chunk",
+            text: notes.slice(i, i + chunkSize),
+          });
+        }
+
+        send({
+          type: "done",
+          model,
+          language,
+          freeLimit: STUDENT_FREE_LIMIT,
+          remaining,
+          cached: true,
+        });
+
+        controller.close();
+      } catch (error) {
+        console.error("Cached notes stream failed:", error);
+        controller.error(error);
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+      ...headers,
+    },
+  });
+}
+
 export async function POST(request: Request) {
-  // Verify the student's Supabase session.
   const supabase = await createSupabaseServerClient();
 
   const {
@@ -198,7 +402,10 @@ export async function POST(request: Request) {
 
   if (!controls.enabled) {
     return NextResponse.json(
-      { error: "AI notes generation is temporarily disabled by the administrator." },
+      {
+        error:
+          "AI notes generation is temporarily disabled by the administrator.",
+      },
       { status: 503 }
     );
   }
@@ -263,12 +470,14 @@ export async function POST(request: Request) {
 
   if (!ipHash) {
     return NextResponse.json(
-      { error: "AI service is temporarily unavailable. Please try again later." },
+      {
+        error:
+          "AI service is temporarily unavailable. Please try again later.",
+      },
       { status: 503 }
     );
   }
 
-  // Preserve the existing IP-based hourly rate limit.
   const rateLimit = await checkGenerationRateLimit(
     ipHash,
     controls.hourlyLimit
@@ -276,7 +485,9 @@ export async function POST(request: Request) {
 
   if (!rateLimit) {
     return NextResponse.json(
-      { error: "Unable to verify AI usage limit. Please try again later." },
+      {
+        error: "Unable to verify AI usage limit. Please try again later.",
+      },
       { status: 503 }
     );
   }
@@ -290,7 +501,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        error: "Hourly AI generation limit reached. You can try again after your limit resets.",
+        error:
+          "Hourly AI generation limit reached. You can try again after your limit resets.",
         limit: controls.hourlyLimit,
         remaining: 0,
         resetAt: rateLimit.resetAt,
@@ -306,7 +518,54 @@ export async function POST(request: Request) {
     );
   }
 
-  // Atomically reserve one of the student's 7 free generations.
+  // Check cache before reserving a student credit.
+  const cacheKey = getCacheKey(
+    subjectCode,
+    subjectName,
+    unitTitle,
+    topic,
+    language
+  );
+
+  const cached = await getCachedNotes(cacheKey);
+
+  if (cached) {
+    const remaining = await getStudentRemainingCredits(user.id);
+    const requestId = randomUUID();
+
+    await insertGenerationLog({
+      request_id: requestId,
+      user_id: user.id,
+      ip_hash: ipHash,
+      subject_code: subjectCode,
+      subject_name: subjectName,
+      unit_title: unitTitle,
+      topic,
+      language,
+      model: cached.model ?? "cache",
+      status: "success",
+      input_tokens: 0,
+      output_tokens: 0,
+      total_tokens: 0,
+      estimated_cost_usd: 0,
+      duration_ms: 0,
+    });
+
+    return createNotesStream(
+      cached.notes,
+      cached.model ?? "cache",
+      language,
+      remaining,
+      {
+        "X-RateLimit-Limit": String(controls.hourlyLimit),
+        "X-RateLimit-Remaining": String(rateLimit.remaining),
+        "X-Free-Generations-Limit": String(STUDENT_FREE_LIMIT),
+        "X-Free-Generations-Remaining": String(remaining),
+      }
+    );
+  }
+
+  // Reserve one of the student's 7 free generations.
   const { data: usageData, error: usageError } = await supabaseAdmin.rpc(
     "reserve_student_ai_generation",
     {
@@ -324,10 +583,16 @@ export async function POST(request: Request) {
     typeof usage.remaining !== "number" ||
     typeof usage.used !== "number"
   ) {
-    console.error("Student AI usage reservation failed:", usageError?.message);
+    console.error(
+      "Student AI usage reservation failed:",
+      usageError?.message
+    );
 
     return NextResponse.json(
-      { error: "Unable to verify your free AI generations. Please try again." },
+      {
+        error:
+          "Unable to verify your free AI generations. Please try again.",
+      },
       { status: 503 }
     );
   }
@@ -335,7 +600,8 @@ export async function POST(request: Request) {
   if (!usage.allowed) {
     return NextResponse.json(
       {
-        error: "Your 7 free AI Notes generations have been used. Paid generations will be available soon.",
+        error:
+          "Your 7 free AI Notes generations have been used. Paid generations will be available soon.",
         freeLimit: STUDENT_FREE_LIMIT,
         used: usage.used,
         remaining: 0,
@@ -356,193 +622,97 @@ export async function POST(request: Request) {
     console.error("Student AI usage reservation returned no usage ID.");
 
     return NextResponse.json(
-      { error: "Unable to reserve your free generation. Please try again." },
+      {
+        error: "Unable to reserve your free generation. Please try again.",
+      },
       { status: 503 }
     );
   }
 
   const languageInstructions =
     language === "Hinglish"
-      ? `
-Write in natural, easy-to-understand Hinglish.
-Use Roman Hindi mixed naturally with English technical terms.
-Never use Devanagari Hindi.
-Keep headings, technical terms, formulas and diagram labels in English.
-Explain difficult concepts patiently to a beginner.
-`
-      : `
-Write in simple, clear and natural English.
-Keep technical terminology accurate.
-Explain difficult terms in student-friendly language.
-`;
+      ? "Write natural Roman Hindi mixed with English technical terms. Never use Devanagari. Keep headings, technical terms, formulas and diagram labels in English. Explain concepts simply."
+      : "Write in simple, clear English. Keep technical terminology accurate and explain difficult concepts simply.";
 
   const previousJokesInstruction =
     previousJokes.length > 0
-      ? `
-Previously used jokes (DO NOT REPEAT):
-${JSON.stringify(previousJokes)}
-Create exactly two completely different jokes. Do not reuse punchlines.
-`
-      : `
-Create exactly two original, clean, funny and light-hearted jokes.
-`;
+      ? `Avoid repeating these previous jokes and punchlines: ${JSON.stringify(previousJokes)}.`
+      : "Create two original jokes.";
 
   const prompt = `
-You are an excellent B.Tech engineering professor, patient personal tutor
-and university examination guide.
+You are an expert B.Tech engineering professor and student-friendly tutor.
 
-Your job is to TEACH the student, not merely provide information.
-Assume the student may be a beginner.
-Make notes academically accurate, structured and useful for university examinations.
+Generate accurate, detailed, exam-oriented study notes. Teach beginners clearly without filler or repetition.
 
-SUBJECT DETAILS
-Subject: ${subjectName}
-Subject Code: ${subjectCode}
-Unit: ${unitTitle}
-Topic: ${topic}
+SUBJECT: ${subjectName}
+CODE: ${subjectCode}
+UNIT: ${unitTitle}
+TOPIC: ${topic}
 
-LANGUAGE
+LANGUAGE:
 ${languageInstructions}
 
-All main and subheadings must be in English.
-Do not randomly switch languages.
-Use meaningful paragraphs, numbered points, examples, formulas,
-comparison tables and diagrams wherever useful.
-Avoid filler, repetition and huge unstructured paragraphs.
+RULES:
+- Use English headings.
+- Cover the important concepts and relevant subtopics.
+- Explain WHY and HOW, not just definitions.
+- Use clear paragraphs and numbered points.
+- Use tables, formulas, examples and diagrams only when useful.
+- Never invent facts, formulas, PYQs or numerical data.
+- Adjust detail to the topic; avoid unnecessary length.
 
-CONTENT DEPTH
-Target approximately 1200–2000 words for a normal topic.
-Adjust length according to actual complexity. Do not skip important concepts.
-
-STRUCTURE OF STUDY NOTES
+NOTES FORMAT:
 
 # Topic Name
 
 ## 1. Introduction
-Explain what the topic is, why it is studied, where it is used
-and its importance in engineering.
+Meaning, importance and engineering relevance.
 
-## 2. Basic Concepts and Fundamentals
-Explain prerequisite knowledge.
-Define important terms in simple language and provide examples.
+## 2. Basic Concepts
+Prerequisites, fundamentals and important definitions.
 
 ## 3. Detailed Explanation
-Divide the topic into logical subtopics.
-For each important subtopic explain:
-- Meaning
-- Detailed explanation of how and why it works
-- Important points
-- Relevant example
+Explain all important subtopics, mechanisms, working principles and processes step by step.
 
-## 4. Working Principle / Operation
-Explain the working process step by step wherever applicable.
-For theoretical topics, explain the important mechanism or process.
+## 4. Formulas
+Relevant formulas, symbol meanings and units. Use correct LaTeX. Do not force formulas into theoretical topics.
 
-## 5. Important Definitions and Key Points
-Provide accurate, exam-relevant definitions with explanations.
+## 5. Diagrams
+Useful labelled diagrams or flowcharts, with explanations. Do not force diagrams where unsuitable.
 
-## 6. Formulas and Mathematical Concepts
-Include only relevant and verified formulas.
-Explain every symbol, unit, purpose and where the formula is used.
-Use correct LaTeX:
-Inline: $V = IR$
-Display:
-$$
-V = IR
-$$
-Never invent formulas.
+## 6. Practical Applications
+Explain relevant real-world and engineering applications.
 
-## 7. Diagrams and Visual Explanation
-Use labelled text diagrams, flowcharts or Mermaid only when useful.
-Use English labels and explain every important block and operation.
-Do not force diagrams into unsuitable topics.
+## 7. Solved Examples
+Provide 1–2 solved numericals if calculations are relevant. Show given data, formula, substitution, calculation and final answer with units. Otherwise give conceptual examples.
 
-## 8. Practical Applications
-Explain real-world and engineering applications, not just their names.
+## 8. Important University Exam Questions
+Provide 4 relevant descriptive questions with sufficiently detailed answers. Explain WHY and HOW, important points and examples. Include diagrams, formulas or comparisons when useful. Never claim a question is from a previous-year paper without verified data.
 
-## 9. Solved Examples and Numericals
-First decide whether meaningful calculations apply.
-If they do, provide 2–3 useful solved examples.
-Do not force irrelevant numericals into theoretical topics.
+## 9. Quick Revision
+Summarise key definitions, concepts, differences and formulas.
 
-For each numerical include:
-1. Complete question
-2. Understanding of the question
-3. Given data with symbols and units
-4. Required quantity
-5. Concept used
-6. Correct formula and symbol meanings
-7. Substitution
-8. Detailed calculation with intermediate steps
-9. Final answer with unit
-10. Meaning of the result
-
-Verify arithmetic, dimensions and units. Never invent data or formulas.
-If no meaningful numerical application exists, provide conceptual worked examples.
-
-## 10. IMPORTANT UNIVERSITY EXAM QUESTIONS
-Provide 5–6 important, non-repetitive and relevant university examination
-questions. Do not create duplicate questions just to reach the target.
-Every answer must be sufficiently detailed for a descriptive B.Tech exam.
-
-For each answer include:
-- Introduction and definition
-- Connected, detailed explanation of WHY and HOW
-- Important points, working or characteristics
-- Relevant example
-- Diagram, formula or comparison table when useful, with explanation
-- Advantages and limitations when relevant
-- Short, meaningful conclusion
-
-Use paragraphs and numbered points together.
-Do not give extremely short or repetitive answers.
-Never claim a question is from a previous-year paper unless verified PYQ data is supplied.
-
-## 11. QUICK REVISION
-Summarise important concepts, definitions, formulas, facts and differences.
-Use short but meaningful points. Do not introduce new concepts.
-
-## 12. MIND FRESH BREAK 😂
-At the absolute end provide EXACTLY TWO original, clean, light-hearted jokes.
-Jokes must be unrelated to studies, engineering, teachers, exams, marks,
-homework, assignments, formulas, numericals, college or classrooms.
-Use everyday situations such as sleep, food, friends, shopping, phones
-or family conversations.
-
-Use exactly this format:
+## 10. MIND FRESH BREAK 😂
+Provide exactly two original, clean jokes unrelated to studies, engineering, exams or college. Use everyday situations.
 
 ### Joke 1
-[First original general funny joke] 😂
+[First joke] 😂
 
 ### Joke 2
-[Second original general funny joke] 😂
-
-Both jokes must have different setups and punchlines.
-Do not repeat previously used jokes.
-Do not add any text after Joke 2.
+[Second different joke] 😂
 
 ${previousJokesInstruction}
 
-FINAL QUALITY CHECK
-Silently verify:
-- Important subtopics and beginner explanations are covered.
-- Paragraphs and numbered points are balanced.
-- Formulas and units are correct.
-- Numerical calculations are fully explained.
+FINAL CHECK:
+- Important concepts are covered accurately.
+- Formulas, calculations and units are correct.
 - Exam answers are sufficiently detailed.
-- Examples and diagrams are relevant and explained.
-- Exactly two unrelated jokes are present.
-- All headings are in English.
-- Markdown and LaTeX are correctly formatted.
-- No unnecessary repetition exists.
-
-Return only the complete study notes in properly formatted Markdown.
-Do not include an introductory message outside the notes.
-Do not mention these instructions.
+- No unnecessary repetition.
+- Exactly two unrelated jokes.
+- Return only complete Markdown notes.
 `;
 
   const ai = new GoogleGenAI({ apiKey });
-
   const encoder = new TextEncoder();
   const requestId = randomUUID();
   const startedAt = Date.now();
@@ -561,6 +731,7 @@ Do not mention these instructions.
       let inputTokens: number | null = null;
       let outputTokens: number | null = null;
       let totalTokens: number | null = null;
+      let fullNotes = "";
 
       const emit = (data: Record<string, unknown>) => {
         if (clientDisconnected || streamClosed) return;
@@ -602,30 +773,17 @@ Do not mention these instructions.
           return;
         }
 
-        try {
-          const { data, error } = await supabaseAdmin
-            .from("ai_generation_logs")
-            .insert({
-              request_id: requestId,
-              ip_hash: ipHash,
-              subject_code: subjectCode,
-              subject_name: subjectName,
-              unit_title: unitTitle,
-              topic,
-              language,
-              status: "started",
-            })
-            .select("id")
-            .single();
-
-          if (error) {
-            console.error("Generation log insert failed:", error.message);
-          } else {
-            logId = data.id;
-          }
-        } catch (error) {
-          console.error("Generation log insert error:", error);
-        }
+        logId = await insertGenerationLog({
+          request_id: requestId,
+          user_id: user.id,
+          ip_hash: ipHash,
+          subject_code: subjectCode,
+          subject_name: subjectName,
+          unit_title: unitTitle,
+          topic,
+          language,
+          status: "started",
+        });
 
         if (clientDisconnected) {
           await updateGenerationLog(logId, {
@@ -663,7 +821,7 @@ Do not mention these instructions.
               model,
               contents: prompt,
               config: {
-                maxOutputTokens: 10000,
+                maxOutputTokens: 6000,
                 thinkingConfig: {
                   thinkingLevel: ThinkingLevel.LOW,
                 },
@@ -680,17 +838,20 @@ Do not mention these instructions.
                 throw new Error("Gemini model timed out.");
               }
 
-              const usage = chunk.usageMetadata;
+              const usageMetadata = chunk.usageMetadata;
 
-              if (usage) {
+              if (usageMetadata) {
                 inputTokens =
-                  getTokenCount(usage.promptTokenCount) ?? inputTokens;
+                  getTokenCount(usageMetadata.promptTokenCount) ??
+                  inputTokens;
 
                 outputTokens =
-                  getTokenCount(usage.candidatesTokenCount) ?? outputTokens;
+                  getTokenCount(usageMetadata.candidatesTokenCount) ??
+                  outputTokens;
 
                 totalTokens =
-                  getTokenCount(usage.totalTokenCount) ?? totalTokens;
+                  getTokenCount(usageMetadata.totalTokenCount) ??
+                  totalTokens;
               }
 
               const text = chunk.text ?? "";
@@ -698,6 +859,7 @@ Do not mention these instructions.
               if (!text) continue;
 
               emittedContent = true;
+              fullNotes += text;
 
               emit({
                 type: "chunk",
@@ -709,9 +871,20 @@ Do not mention these instructions.
               throw new Error("Client disconnected.");
             }
 
-            if (!emittedContent) {
+            if (!emittedContent || !fullNotes.trim()) {
               throw new Error("Gemini returned an empty response.");
             }
+
+            // Save completed notes for future reuse.
+            await saveCachedNotes(
+              cacheKey,
+              subjectCode,
+              unitTitle,
+              topic,
+              language,
+              fullNotes,
+              model
+            );
 
             await updateGenerationLog(logId, {
               model,
@@ -724,7 +897,6 @@ Do not mention these instructions.
               error_message: null,
             });
 
-            // Mark the reserved student credit as completed.
             usageCompleted = await updateStudentUsage(
               studentUsageId,
               "completed"
@@ -738,6 +910,7 @@ Do not mention these instructions.
               language,
               freeLimit: STUDENT_FREE_LIMIT,
               remaining: usage.remaining,
+              cached: false,
             });
 
             closeStream();
@@ -751,7 +924,7 @@ Do not mention these instructions.
               break;
             }
 
-            // Never switch models after sending partial notes.
+            // Do not switch models after partial notes have been sent.
             if (emittedContent) {
               throw lastError;
             }
@@ -811,15 +984,12 @@ Do not mention these instructions.
 
         const status = getErrorStatus(error);
 
-        let message =
-          "Notes generate nahi ho paye. Please try again.";
+        let message = "Notes generate nahi ho paye. Please try again.";
 
         if (error instanceof Error && error.message.includes("timed out")) {
-          message =
-            "AI response mein delay ho raha hai. Please try again.";
+          message = "AI response mein delay ho raha hai. Please try again.";
         } else if ([500, 502, 503, 504].includes(status)) {
-          message =
-            "Gemini models are temporarily busy. Please try again.";
+          message = "Gemini models are temporarily busy. Please try again.";
         } else if (status === 429) {
           message =
             "Gemini API rate limit or quota reached. Please check your Google AI Studio usage limits.";
@@ -851,7 +1021,6 @@ Do not mention these instructions.
 
         closeStream();
       } finally {
-        // Release the reservation whenever generation did not complete.
         if (!usageCompleted) {
           await updateStudentUsage(studentUsageId, "failed");
         }

@@ -18,6 +18,13 @@ type UnitLearningProps = {
   onBack: () => void;
 };
 
+type AICredits = {
+  loggedIn: boolean;
+  freeLimit: number;
+  used: number;
+  remaining: number;
+};
+
 function cleanMarkdown(content: string) {
   return content
     .replace(/\\([#*_\`~>|])/g, "$1")
@@ -209,6 +216,11 @@ export default function UnitLearning({
   const [copied, setCopied] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
+  // AI free credits
+  const [credits, setCredits] = useState<AICredits | null>(null);
+  const [creditsLoading, setCreditsLoading] = useState(true);
+  const [creditsError, setCreditsError] = useState("");
+
   const activeNotesKeyRef = useRef("");
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -226,6 +238,54 @@ export default function UnitLearning({
   ].join("-");
 
   const jokesKey = `${notesKey}-jokes`;
+
+  // Fetch the student's current free AI credits.
+  async function refreshCredits() {
+    try {
+      setCreditsError("");
+
+      const response = await fetch("/api/ai-credits", {
+        method: "GET",
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+
+      const data = await response.json();
+
+      if (response.status === 401) {
+        setCredits({
+          loggedIn: false,
+          freeLimit: 7,
+          used: 0,
+          remaining: 0,
+        });
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || "Credits load nahi ho paye.");
+      }
+
+      setCredits({
+        loggedIn: true,
+        freeLimit: data.freeLimit,
+        used: data.used,
+        remaining: data.remaining,
+      });
+    } catch (error) {
+      setCreditsError(
+        error instanceof Error
+          ? error.message
+          : "Credits load nahi ho paye."
+      );
+    } finally {
+      setCreditsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void refreshCredits();
+  }, []);
 
   useEffect(() => {
     setSelectedTopic(0);
@@ -283,6 +343,21 @@ export default function UnitLearning({
   async function generateAINotes() {
     if (!topic.trim() || isGenerating) return;
 
+    if (creditsLoading) {
+      setAiError("Please wait, AI credits check ho rahe hain.");
+      return;
+    }
+
+    if (!credits?.loggedIn) {
+      setAiError("AI Notes generate karne ke liye pehle login karo.");
+      return;
+    }
+
+    if (credits.remaining <= 0) {
+      setAiError("Tumhare 7 free AI Notes generations use ho chuke hain.");
+      return;
+    }
+
     const requestKey = notesKey;
     const controller = new AbortController();
 
@@ -294,6 +369,7 @@ export default function UnitLearning({
     setCopied(false);
 
     let accumulatedNotes = "";
+    let generationSucceeded = false;
 
     try {
       let previousJokes: string[] = [];
@@ -329,7 +405,7 @@ export default function UnitLearning({
           const data = await response.json();
           errorMessage = data.error || errorMessage;
         } catch {
-          // Keep the default message.
+          // Keep default message.
         }
 
         throw new Error(errorMessage);
@@ -365,6 +441,20 @@ export default function UnitLearning({
 
         if (data.type === "done") {
           streamCompleted = true;
+          generationSucceeded = true;
+
+          // Update credits immediately using the server response.
+          if (typeof data.remaining === "number") {
+            setCredits((current) =>
+              current
+                ? {
+                    ...current,
+                    remaining: data.remaining,
+                    used: current.freeLimit - data.remaining,
+                  }
+                : current
+            );
+          }
         }
 
         if (data.type === "error") {
@@ -448,6 +538,13 @@ export default function UnitLearning({
         );
       }
     } finally {
+      // Failed generations are released by the server.
+      // Refresh after the server has had time to release the reservation.
+      if (!generationSucceeded) {
+        await new Promise((resolve) => window.setTimeout(resolve, 700));
+        await refreshCredits();
+      }
+
       if (activeNotesKeyRef.current === requestKey) {
         setIsGenerating(false);
       }
@@ -603,6 +700,11 @@ export default function UnitLearning({
   const notesAreLoaded = notesLoadedKey === notesKey;
   const displayNotes = isGenerating ? streamingNotes : generatedNotes;
 
+  const canGenerate =
+    !creditsLoading &&
+    credits?.loggedIn === true &&
+    credits.remaining > 0;
+
   return (
     <main className="min-w-0 py-2">
       <button
@@ -715,6 +817,96 @@ export default function UnitLearning({
                 questions and revision points.
               </p>
 
+              {/* FREE AI CREDITS DISPLAY */}
+              <div className="mt-5 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                {creditsLoading ? (
+                  <p className="text-sm font-semibold text-indigo-800">
+                    Checking your free AI credits...
+                  </p>
+                ) : credits?.loggedIn ? (
+                  <>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-bold text-indigo-950">
+                          Your free AI generations
+                        </p>
+                        <p className="mt-1 text-xs text-indigo-700">
+                          Lifetime free allowance
+                        </p>
+                      </div>
+
+                      <p className="text-lg font-black text-indigo-800">
+                        {credits.remaining}/{credits.freeLimit} left
+                      </p>
+                    </div>
+
+                    <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-indigo-200">
+                      <div
+                        className="h-full rounded-full bg-indigo-600 transition-all duration-500"
+                        style={{
+                          width: `${
+                            (credits.remaining / credits.freeLimit) * 100
+                          }%`,
+                        }}
+                      />
+                    </div>
+
+                    <p className="mt-2 text-xs text-indigo-700">
+                      {credits.used} generation
+                      {credits.used === 1 ? "" : "s"} used ·{" "}
+                      {credits.remaining} remaining
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-bold text-indigo-950">
+                      Login to use AI Notes
+                    </p>
+                    <p className="mt-1 text-sm text-indigo-800">
+                      Login karne ke baad tumhe 7 free AI Notes generations
+                      milengi.
+                    </p>
+                    <a
+                      href="/auth"
+                      className="mt-3 inline-flex rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700"
+                    >
+                      Login / Sign up
+                    </a>
+                  </>
+                )}
+
+                {creditsError && (
+                  <div className="mt-3">
+                    <p className="text-xs text-red-700">{creditsError}</p>
+                    <button
+                      onClick={() => {
+                        setCreditsLoading(true);
+                        void refreshCredits();
+                      }}
+                      className="mt-2 text-xs font-bold text-indigo-700 underline"
+                    >
+                      Retry credits check
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* NO CREDITS MESSAGE */}
+              {credits?.loggedIn && credits.remaining <= 0 && (
+                <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
+                  <p className="font-bold text-amber-950">
+                    🎉 Your 7 free generations are used!
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-amber-900">
+                    Tumhare saare free AI Notes credits use ho chuke hain.
+                    Additional paid generations jald available hongi.
+                  </p>
+                  <div className="mt-3 inline-flex rounded-lg bg-amber-200 px-3 py-2 text-xs font-bold text-amber-950">
+                    Upgrade Coming Soon
+                  </div>
+                </div>
+              )}
+
               <div className="mt-5">
                 <label
                   htmlFor="notes-language"
@@ -755,14 +947,20 @@ export default function UnitLearning({
               <div className="mt-5 flex flex-wrap gap-3">
                 <button
                   onClick={generateAINotes}
-                  disabled={isGenerating}
-                  className="w-full rounded-xl bg-indigo-600 px-5 py-3 font-bold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                  disabled={isGenerating || creditsLoading || !canGenerate}
+                  className="w-full rounded-xl bg-indigo-600 px-5 py-3 font-bold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
                   {isGenerating
                     ? "Generating notes..."
-                    : generatedNotes && notesAreLoaded
-                      ? "↻ Regenerate AI Notes"
-                      : "✨ Generate AI Notes"}
+                    : creditsLoading
+                      ? "Checking credits..."
+                      : !credits?.loggedIn
+                        ? "Login to Generate Notes"
+                        : credits.remaining <= 0
+                          ? "Free Credits Used"
+                          : generatedNotes && notesAreLoaded
+                            ? "↻ Regenerate AI Notes"
+                            : "✨ Generate AI Notes"}
                 </button>
 
                 {generatedNotes && notesAreLoaded && (
