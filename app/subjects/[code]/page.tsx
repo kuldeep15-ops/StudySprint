@@ -59,12 +59,26 @@ function SubjectPageContent() {
       ? null
       : subject.units[selectedUnitIndex] ?? null;
 
+  const practicalReference =
+    typeof subject.practicalData === "string"
+      ? subject.practicalData
+      : undefined;
+
   const detailItems = [
     { label: "Theory Code", value: subject.theoryCode ?? subject.code },
-    { label: "Theory Credits", value: subject.theoryCredits ?? subject.credits ?? "—" },
+    {
+      label: "Theory Credits",
+      value: subject.theoryCredits ?? subject.credits ?? "—",
+    },
     { label: "Lab Code", value: subject.labCode ?? "—" },
     { label: "Lab Credits", value: subject.labCredits ?? "—" },
   ];
+
+  const hasLabData =
+    Boolean(subject.labCode) ||
+    subject.labCredits !== undefined ||
+    subject.labExperiments.length > 0 ||
+    Boolean(practicalReference);
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
@@ -207,9 +221,9 @@ function SubjectPageContent() {
 
                       {unit.topics.length > 0 ? (
                         <ul className="mt-4 space-y-2">
-                          {unit.topics.slice(0, 4).map((topic) => (
+                          {unit.topics.slice(0, 4).map((topic, topicIndex) => (
                             <li
-                              key={topic}
+                              key={`${index}-${topicIndex}`}
                               className="flex gap-2 text-sm leading-6 text-slate-600"
                             >
                               <span className="text-indigo-500">•</span>
@@ -235,73 +249,174 @@ function SubjectPageContent() {
         )}
 
         {activeTab === "Lab" && (
-          <section className="mt-7 rounded-3xl border bg-white p-6 sm:p-9">
-            <h2 className="text-2xl font-black">Lab Details</h2>
+          <section className="mt-7">
+            <div className="mb-5">
+              <h2 className="text-2xl font-black">Lab Experiments</h2>
+              <p className="mt-2 leading-7 text-slate-600">
+                Available lab codes, credits, experiment aims and source-provided procedure steps.
+              </p>
+            </div>
 
-            {subject.labCode ? (
+            {hasLabData ? (
               <>
-                <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="rounded-2xl border bg-white p-5 shadow-sm">
                     <p className="text-sm font-semibold text-slate-500">
                       Lab Code
                     </p>
-                    <p className="mt-2 text-xl font-black text-indigo-700">
-                      {subject.labCode}
+                    <p className="mt-2 break-words text-xl font-black text-indigo-700">
+                      {subject.labCode ?? "Not provided"}
                     </p>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                  <div className="rounded-2xl border bg-white p-5 shadow-sm">
                     <p className="text-sm font-semibold text-slate-500">
                       Lab Credits
                     </p>
                     <p className="mt-2 text-xl font-black text-indigo-700">
-                      {subject.labCredits ?? "—"}
+                      {subject.labCredits ?? "Not provided"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border bg-white p-5 shadow-sm">
+                    <p className="text-sm font-semibold text-slate-500">
+                      Practical Reference
+                    </p>
+                    <p className="mt-2 break-words text-lg font-black text-indigo-700">
+                      {practicalReference ?? "Not provided"}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Source ID, not a practical manual
                     </p>
                   </div>
                 </div>
 
-                <p className="mt-5 leading-7 text-slate-600">
-                  Lab code aur credits add kar diye gaye hain. Experiments
-                  aur practical syllabus milne par yahan add kiye jayenge.
-                </p>
+                <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-xl font-black">Experiments</h3>
+                  <span className="rounded-full bg-indigo-50 px-3 py-1.5 text-sm font-bold text-indigo-700">
+                    {subject.labExperiments.length} available
+                  </span>
+                </div>
+
+                {subject.labExperiments.length > 0 ? (
+                  <div className="space-y-4">
+                    {subject.labExperiments.map((experiment, index) => (
+                      <article
+                        key={`${subject.code}-experiment-${index}`}
+                        className="rounded-2xl border bg-white p-5 shadow-sm sm:p-6"
+                      >
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 font-black text-indigo-700">
+                            {index + 1}
+                          </span>
+                          <h4 className="text-lg font-black">
+                            Experiment {experiment.experiment}
+                          </h4>
+                        </div>
+
+                        <div className="mt-5">
+                          <p className="text-sm font-bold uppercase tracking-wide text-indigo-700">
+                            Aim
+                          </p>
+                          <p className="mt-2 leading-7 text-slate-700">
+                            {experiment.aim?.objective ||
+                              "Aim source data mein available nahi hai."}
+                          </p>
+                        </div>
+
+                        {experiment.aim?.steps &&
+                        experiment.aim.steps.length > 0 ? (
+                          <div className="mt-5">
+                            <p className="text-sm font-bold uppercase tracking-wide text-indigo-700">
+                              Procedure / Steps
+                            </p>
+                            <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-7 text-slate-700">
+                              {experiment.aim.steps.map((step, stepIndex) => (
+                                <li key={stepIndex}>{step}</li>
+                              ))}
+                            </ol>
+                          </div>
+                        ) : (
+                          <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm leading-6 text-amber-800">
+                            Procedure steps source data mein available nahi hain.
+                          </p>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-7 text-amber-900">
+                    Lab code ya credits available hain, lekin experiment list source data mein nahi mili.
+                  </div>
+                )}
               </>
             ) : (
-              <p className="mt-3 leading-7 text-slate-600">
-                Is subject ke liye lab code aur credits abhi provide nahi kiye gaye hain.
+              <div className="rounded-2xl border bg-white p-6 shadow-sm">
+                <p className="leading-7 text-slate-600">
+                  Is subject ke liye lab code, credits aur experiment details abhi source data mein available nahi hain.
+                </p>
+              </div>
+            )}
+          </section>
+        )}
+
+        {activeTab === "Practicals" && (
+          <section className="mt-7 rounded-3xl border bg-white p-6 sm:p-9">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-2xl">
+              🧪
+            </div>
+
+            <h2 className="mt-4 text-2xl font-black">Practical Reference</h2>
+
+            {practicalReference ? (
+              <div className="mt-5 rounded-2xl border bg-slate-50 p-5">
+                <p className="text-sm font-semibold text-slate-500">
+                  Available Source Reference
+                </p>
+                <p className="mt-2 break-words text-xl font-black text-indigo-700">
+                  {practicalReference}
+                </p>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  Ye reference ID source dataset mein available hai.
+                  Actual practical manual ya procedure content is ID ke
+                  saath provided nahi hai.
+                </p>
+              </div>
+            ) : (
+              <p className="mt-4 text-slate-600">
+                Is subject ka practical reference source data mein available nahi hai.
               </p>
             )}
           </section>
         )}
 
-        {activeTab !== "Theory" && activeTab !== "Lab" && (
-          <section className="mt-7 rounded-3xl border bg-white p-6 sm:p-9">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-2xl">
-              {activeTab === "Notes"
-                ? "📝"
-                : activeTab === "PYQs"
-                  ? "📄"
-                  : activeTab === "Books"
-                    ? "📚"
-                    : "🧪"}
-            </div>
+        {activeTab !== "Theory" &&
+          activeTab !== "Lab" &&
+          activeTab !== "Practicals" && (
+            <section className="mt-7 rounded-3xl border bg-white p-6 sm:p-9">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-2xl">
+                {activeTab === "Notes"
+                  ? "📝"
+                  : activeTab === "PYQs"
+                    ? "📄"
+                    : "📚"}
+              </div>
 
-            <h2 className="mt-4 text-2xl font-black">{activeTab}</h2>
+              <h2 className="mt-4 text-2xl font-black">{activeTab}</h2>
 
-            <p className="mt-3 max-w-2xl leading-7 text-slate-600">
-              {activeTab === "Notes"
-                ? "Unit-wise notes and exam-oriented short and long answers will be added here."
-                : activeTab === "PYQs"
-                  ? "Previous-year question papers will be listed here after their source and year are checked."
-                  : activeTab === "Books"
-                    ? "Prescribed and recommended books will be listed here after verification."
-                    : "Practical experiments, procedure and viva preparation material will be listed here."}
-            </p>
+              <p className="mt-3 max-w-2xl leading-7 text-slate-600">
+                {activeTab === "Notes"
+                  ? "Unit-wise notes and exam-oriented short and long answers will be added here."
+                  : activeTab === "PYQs"
+                    ? "Previous-year question papers will be listed here after their source and year are checked."
+                    : "Prescribed and recommended books will be listed here after verification."}
+              </p>
 
-            <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-              Is section ka material abhi add nahi kiya gaya hai.
-            </div>
-          </section>
-        )}
+              <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+                Is section ka material abhi add nahi kiya gaya hai.
+              </div>
+            </section>
+          )}
       </div>
     </main>
   );

@@ -6,10 +6,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { courses } from "./components/data/courses";
 
+type CourseName = "B.Tech" | "BCA" | "";
+
 export default function HomePage() {
   const router = useRouter();
 
-  const [courseName, setCourseName] = useState<"B.Tech" | "BCA">("B.Tech");
+  const [courseName, setCourseName] = useState<CourseName>("");
   const [branchName, setBranchName] = useState("");
   const [semester, setSemester] = useState("");
   const [search, setSearch] = useState("");
@@ -30,6 +32,34 @@ export default function HomePage() {
     (item) => item.semester === Number(semester)
   );
 
+  const allSubjects = useMemo(() => {
+    return courses.flatMap((course) =>
+      course.branches.flatMap((branch) =>
+        branch.semesters.flatMap((semesterItem) =>
+          semesterItem.subjects.map((subject) => ({
+            ...subject,
+            courseName: course.name,
+            branchName: branch.name,
+            semesterNumber: semesterItem.semester,
+          }))
+        )
+      )
+    );
+  }, []);
+
+  const globalSearchResults = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    if (!query) return [];
+
+    return allSubjects.filter((subject) => {
+      return (
+        subject.name.toLowerCase().includes(query) ||
+        subject.code.toLowerCase().includes(query)
+      );
+    });
+  }, [allSubjects, search]);
+
   const subjects = useMemo(() => {
     if (!branchName || !semester) {
       return [];
@@ -46,11 +76,10 @@ export default function HomePage() {
     });
   }, [semesterData, search, branchName, semester]);
 
-  function changeCourse(value: "B.Tech" | "BCA") {
+  function changeCourse(value: CourseName) {
     setCourseName(value);
     setBranchName("");
     setSemester("");
-    setSearch("");
     setSyllabusType("affiliated");
   }
 
@@ -61,6 +90,7 @@ export default function HomePage() {
   }
 
   const selectionComplete = Boolean(branchName && semester);
+  const isSearching = Boolean(search.trim());
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
@@ -169,21 +199,42 @@ export default function HomePage() {
             Find your subjects
           </h2>
           <p className="mt-2 max-w-2xl leading-7 text-slate-600">
-            Select your course, branch and semester to view available subjects.
+            Search any subject across all courses, branches and semesters,
+            or select your course, branch and semester.
           </p>
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-7">
+          <div className="mb-6">
+            <label
+              className="mb-2 block text-sm font-bold"
+              htmlFor="subject-search"
+            >
+              Search subject
+            </label>
+            <input
+              id="subject-search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search any subject name or code across all branches..."
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+            />
+            <p className="mt-2 text-xs text-slate-500">
+              You can search without selecting Course, Branch or Semester.
+            </p>
+          </div>
+
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <label className="block">
               <span className="mb-2 block text-sm font-bold">Course</span>
               <select
                 value={courseName}
                 onChange={(event) =>
-                  changeCourse(event.target.value as "B.Tech" | "BCA")
+                  changeCourse(event.target.value as CourseName)
                 }
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
               >
+                <option value="">Select your course</option>
                 <option value="B.Tech">B.Tech</option>
                 <option value="BCA">BCA</option>
               </select>
@@ -193,12 +244,12 @@ export default function HomePage() {
               <span className="mb-2 block text-sm font-bold">Branch</span>
               <select
                 value={branchName}
+                disabled={!selectedCourse}
                 onChange={(event) => {
                   setBranchName(event.target.value);
                   setSemester("");
-                  setSearch("");
                 }}
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
               >
                 <option value="">Select your branch</option>
                 {branches.map((branch) => (
@@ -214,10 +265,7 @@ export default function HomePage() {
               <select
                 value={semester}
                 disabled={!selectedBranch}
-                onChange={(event) => {
-                  setSemester(event.target.value);
-                  setSearch("");
-                }}
+                onChange={(event) => setSemester(event.target.value)}
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
               >
                 <option value="">Choose your semester</option>
@@ -268,55 +316,101 @@ export default function HomePage() {
               </button>
             </div>
           </div>
-
-          <div className="mt-6">
-            <label
-              className="mb-2 block text-sm font-bold"
-              htmlFor="subject-search"
-            >
-              Search subject
-            </label>
-            <input
-              id="subject-search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by subject name or code..."
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
-            />
-          </div>
         </div>
 
         <div className="mb-5 mt-9 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h3 className="text-2xl font-black">
-              {selectionComplete
-                ? `Semester ${semester} subjects`
-                : "Explore subjects"}
+              {isSearching
+                ? "Search results"
+                : selectionComplete
+                  ? `Semester ${semester} subjects`
+                  : "Explore subjects"}
             </h3>
             <p className="mt-1 text-sm text-slate-600">
-              {courseName}
-              {selectedBranch ? ` · ${selectedBranch.name}` : ""}
+              {isSearching
+                ? "Showing matches across all courses, branches and semesters"
+                : `${courseName || "Select a course"}${selectedBranch ? ` · ${selectedBranch.name}` : ""}`}
             </p>
           </div>
 
-          {selectionComplete && (
+          {isSearching && (
+            <span className="rounded-full bg-indigo-100 px-3 py-1.5 text-sm font-bold text-indigo-700">
+              {globalSearchResults.length} results
+            </span>
+          )}
+
+          {!isSearching && selectionComplete && (
             <span className="rounded-full bg-slate-200 px-3 py-1.5 text-sm font-bold text-slate-700">
               {subjects.length} subjects
             </span>
           )}
         </div>
 
-        {!selectionComplete ? (
+        {isSearching ? (
+          globalSearchResults.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {globalSearchResults.map((subject) => (
+                <article
+                  key={`${subject.courseName}-${subject.branchName}-${subject.semesterNumber}-${subject.code}-${subject.name}`}
+                  className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-indigo-300 hover:shadow-lg"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-black text-indigo-700">
+                      {subject.code}
+                    </span>
+
+                    {subject.syllabusVerified && (
+                      <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-bold text-green-700">
+                        Verified
+                      </span>
+                    )}
+                  </div>
+
+                  <h4 className="mt-4 text-lg font-bold leading-6">
+                    {subject.name}
+                  </h4>
+
+                  <p className="mt-2 text-sm text-slate-500">
+                    {subject.courseName} · {subject.branchName} · Semester{" "}
+                    {subject.semesterNumber}
+                  </p>
+
+                  <button
+                    onClick={() => openSubject(subject.code)}
+                    className="mt-5 w-full rounded-xl bg-indigo-600 px-4 py-3 font-bold text-white transition hover:bg-indigo-700"
+                  >
+                    Open subject <span className="ml-1">→</span>
+                  </button>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl">
+                🔍
+              </div>
+              <h4 className="mt-4 text-xl font-black">No subjects found</h4>
+              <p className="mx-auto mt-2 max-w-xl leading-7 text-slate-600">
+                Is naam ya code se koi subject nahi mila. Spelling ya subject
+                code check karke dobara search karein.
+              </p>
+            </div>
+          )
+        ) : !selectionComplete ? (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl">
               📚
             </div>
             <h4 className="mt-4 text-xl font-black">
-              Select your branch and semester
+              {courseName
+                ? "Select your branch and semester"
+                : "Select your course to explore"}
             </h4>
             <p className="mx-auto mt-2 max-w-xl leading-7 text-slate-600">
-              Please select your branch and choose your semester to explore
-              the available subjects.
+              {courseName
+                ? "Please select your branch and choose your semester to explore the available subjects. Or use the search box above."
+                : "Choose B.Tech or BCA to browse subjects by branch and semester. You can also search for any subject above without selecting a course."}
             </p>
           </div>
         ) : subjects.length > 0 ? (
@@ -362,8 +456,8 @@ export default function HomePage() {
             <h4 className="mt-4 text-xl font-black">Subjects not added yet</h4>
             <p className="mx-auto mt-2 max-w-xl leading-7 text-slate-600">
               Is branch aur semester ke subjects ka verified data abhi is
-              demo database mein nahi hai. Galat subject list dikhane ke
-              bajay hum ise verified syllabus data milne par add karenge.
+              database mein nahi hai. Galat subject list dikhane ke bajay
+              hum ise verified syllabus data milne par add karenge.
             </p>
           </div>
         )}

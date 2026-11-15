@@ -9,6 +9,14 @@ export type Unit = {
   topics: Topic[];
 };
 
+export type LabExperiment = {
+  experiment: number | string;
+  aim?: {
+    objective?: string;
+    steps: string[];
+  };
+};
+
 export type SyllabusType = "affiliated" | "usict";
 
 export type Subject = {
@@ -27,7 +35,7 @@ export type Subject = {
   labCode?: string;
   labCredits?: number;
   units: Unit[];
-  labExperiments: string[];
+  labExperiments: LabExperiment[];
   bookId?: string;
   pyqId?: string;
   practicalData?: unknown;
@@ -83,14 +91,8 @@ type DatasetSubject = {
 
 type NormalizedDataset = {
   programs: {
-    BTECH: Record<
-      string,
-      Record<string, DatasetMapping[]>
-    >;
-    BCA: Record<
-      string,
-      Record<string, DatasetMapping[]>
-    >;
+    BTECH: Record<string, Record<string, DatasetMapping[]>>;
+    BCA: Record<string, Record<string, DatasetMapping[]>>;
   };
   subjects: Record<string, DatasetSubject>;
 };
@@ -125,6 +127,51 @@ const createSemesters = (total: number) =>
     subjects: [] as Subject[],
   }));
 
+function convertLabExperiments(lab: unknown): LabExperiment[] {
+  if (!Array.isArray(lab)) return [];
+
+  return lab
+    .filter(
+      (experiment): experiment is Record<string, unknown> =>
+        typeof experiment === "object" &&
+        experiment !== null &&
+        !Array.isArray(experiment)
+    )
+    .map((experiment, index) => {
+      const rawAim =
+        typeof experiment.aim === "object" &&
+        experiment.aim !== null &&
+        !Array.isArray(experiment.aim)
+          ? (experiment.aim as Record<string, unknown>)
+          : undefined;
+
+      const steps = Array.isArray(rawAim?.steps)
+        ? rawAim.steps.filter(
+            (step): step is string => typeof step === "string"
+          )
+        : [];
+
+      const experimentNumber =
+        typeof experiment.experiment === "number" ||
+        typeof experiment.experiment === "string"
+          ? experiment.experiment
+          : index + 1;
+
+      return {
+        experiment: experimentNumber,
+        aim: rawAim
+          ? {
+              objective:
+                typeof rawAim.objective === "string"
+                  ? rawAim.objective
+                  : undefined,
+              steps,
+            }
+          : undefined,
+      };
+    });
+}
+
 function convertSubject(
   mapping: DatasetMapping,
   branch: string,
@@ -134,9 +181,7 @@ function convertSubject(
   const record = dataset.subjects[mapping.subjectId];
 
   if (!record) {
-    console.error(
-      `Dataset subject missing: ${mapping.subjectId}`
-    );
+    console.error(`Dataset subject missing: ${mapping.subjectId}`);
     return null;
   }
 
@@ -154,29 +199,7 @@ function convertSubject(
       : [],
   }));
 
-  const labExperiments = Array.isArray(data.lab)
-    ? data.lab
-        .map((experiment) => {
-          if (typeof experiment === "string") return experiment;
-
-          if (
-            experiment &&
-            typeof experiment === "object"
-          ) {
-            const item = experiment as Record<string, unknown>;
-
-            return String(
-              item.title ??
-                item.name ??
-                item.experiment ??
-                ""
-            );
-          }
-
-          return "";
-        })
-        .filter(Boolean)
-    : [];
+  const labExperiments = convertLabExperiments(data.lab);
 
   const theoryCredits =
     typeof data.theorycredits === "number"

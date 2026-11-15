@@ -3,10 +3,12 @@ import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { NextResponse } from "next/server";
 import { createHmac, randomUUID } from "crypto";
 import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
+import { createSupabaseServerClient } from "@/app/lib/supabaseServer";
 
 export const maxDuration = 300;
 
 const RATE_LIMIT_WINDOW_SECONDS = 60 * 60;
+const STUDENT_FREE_LIMIT = 7;
 
 const MODELS = [
   { name: "gemini-3.5-flash-lite", timeout: 90_000 },
@@ -58,6 +60,30 @@ async function updateGenerationLog(
     }
   } catch (error) {
     console.error("Generation log update error:", error);
+  }
+}
+
+async function updateStudentUsage(
+  usageId: number | string | null,
+  status: "completed" | "failed"
+): Promise<boolean> {
+  if (usageId === null) return false;
+
+  try {
+    const { error } = await supabaseAdmin
+      .from("student_ai_usage")
+      .update({ status })
+      .eq("id", usageId);
+
+    if (error) {
+      console.error("Student AI usage update failed:", error.message);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Student AI usage update error:", error);
+    return false;
   }
 }
 
@@ -146,6 +172,21 @@ async function checkGenerationRateLimit(
 }
 
 export async function POST(request: Request) {
+  // Verify the student's Supabase session.
+  const supabase = await createSupabaseServerClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json(
+      { error: "AI Notes generate karne ke liye login required hai." },
+      { status: 401 }
+    );
+  }
+
   const controls = await getAIControls();
 
   if (!controls) {
@@ -227,6 +268,7 @@ export async function POST(request: Request) {
     );
   }
 
+  // Preserve the existing IP-based hourly rate limit.
   const rateLimit = await checkGenerationRateLimit(
     ipHash,
     controls.hourlyLimit
@@ -261,6 +303,61 @@ export async function POST(request: Request) {
           "X-RateLimit-Remaining": "0",
         },
       }
+    );
+  }
+
+  // Atomically reserve one of the student's 7 free generations.
+  const { data: usageData, error: usageError } = await supabaseAdmin.rpc(
+    "reserve_student_ai_generation",
+    {
+      p_student_id: user.id,
+      p_limit: STUDENT_FREE_LIMIT,
+    }
+  );
+
+  const usage = Array.isArray(usageData) ? usageData[0] : usageData;
+
+  if (
+    usageError ||
+    !usage ||
+    typeof usage.allowed !== "boolean" ||
+    typeof usage.remaining !== "number" ||
+    typeof usage.used !== "number"
+  ) {
+    console.error("Student AI usage reservation failed:", usageError?.message);
+
+    return NextResponse.json(
+      { error: "Unable to verify your free AI generations. Please try again." },
+      { status: 503 }
+    );
+  }
+
+  if (!usage.allowed) {
+    return NextResponse.json(
+      {
+        error: "Your 7 free AI Notes generations have been used. Paid generations will be available soon.",
+        freeLimit: STUDENT_FREE_LIMIT,
+        used: usage.used,
+        remaining: 0,
+      },
+      {
+        status: 429,
+        headers: {
+          "X-Free-Generations-Limit": String(STUDENT_FREE_LIMIT),
+          "X-Free-Generations-Remaining": "0",
+        },
+      }
+    );
+  }
+
+  const studentUsageId = usage.usage_id as number | string;
+
+  if (studentUsageId === null || studentUsageId === undefined) {
+    console.error("Student AI usage reservation returned no usage ID.");
+
+    return NextResponse.json(
+      { error: "Unable to reserve your free generation. Please try again." },
+      { status: 503 }
     );
   }
 
@@ -459,6 +556,7 @@ Do not mention these instructions.
       let logId: string | null = null;
       let activeModel: string | null = null;
       let lastError: unknown = null;
+      let usageCompleted = false;
 
       let inputTokens: number | null = null;
       let outputTokens: number | null = null;
@@ -626,12 +724,20 @@ Do not mention these instructions.
               error_message: null,
             });
 
+            // Mark the reserved student credit as completed.
+            usageCompleted = await updateStudentUsage(
+              studentUsageId,
+              "completed"
+            );
+
             console.log(`Generation completed using ${model}`);
 
             emit({
               type: "done",
               model,
               language,
+              freeLimit: STUDENT_FREE_LIMIT,
+              remaining: usage.remaining,
             });
 
             closeStream();
@@ -745,6 +851,11 @@ Do not mention these instructions.
 
         closeStream();
       } finally {
+        // Release the reservation whenever generation did not complete.
+        if (!usageCompleted) {
+          await updateStudentUsage(studentUsageId, "failed");
+        }
+
         request.signal.removeEventListener("abort", handleDisconnect);
       }
     },
@@ -763,6 +874,8 @@ Do not mention these instructions.
       "X-Accel-Buffering": "no",
       "X-RateLimit-Limit": String(controls.hourlyLimit),
       "X-RateLimit-Remaining": String(rateLimit.remaining),
+      "X-Free-Generations-Limit": String(STUDENT_FREE_LIMIT),
+      "X-Free-Generations-Remaining": String(usage.remaining),
     },
   });
 }

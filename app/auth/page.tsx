@@ -35,9 +35,11 @@ export default function AuthPage() {
         if (error) throw error;
 
         if (!data.session) {
-          setMessage("Account created! Check your Gmail and confirm your email.");
+          setMessage(
+            "Account created! Check your Gmail and confirm your email. You will be redirected to the home page."
+          );
         } else {
-          router.replace("/dashboard");
+          router.replace("/");
           router.refresh();
         }
       } else {
@@ -48,7 +50,7 @@ export default function AuthPage() {
 
         if (error) throw error;
 
-        router.replace("/dashboard");
+        router.replace("/");
         router.refresh();
       }
     } catch (err) {
