@@ -128,7 +128,6 @@ async function saveCachedNotes(
   }
 }
 
-// UPDATED: NULL token values are converted to 0 before database update.
 async function updateGenerationLog(
   logId: string | null,
   data: Record<string, unknown>
@@ -159,7 +158,6 @@ async function updateGenerationLog(
   }
 }
 
-// UPDATED: Initial log insertion also gets safe default token values.
 async function insertGenerationLog(
   data: Record<string, unknown>
 ): Promise<string | null> {
@@ -202,7 +200,8 @@ async function updateStudentUsage(
     const { error } = await supabaseAdmin
       .from("student_ai_usage")
       .update({ status })
-      .eq("id", usageId);
+      .eq("id", usageId)
+      .eq("status", "reserved");
 
     if (error) {
       console.error("Student AI usage update failed:", error.message);
@@ -216,6 +215,7 @@ async function updateStudentUsage(
   }
 }
 
+// Only count free generations. Paid generations are stored separately.
 async function getStudentRemainingCredits(studentId: string): Promise<number> {
   try {
     const { count, error } = await supabaseAdmin
@@ -223,16 +223,43 @@ async function getStudentRemainingCredits(studentId: string): Promise<number> {
       .select("id", { count: "exact", head: true })
       .eq("student_id", studentId)
       .eq("feature", "ai_notes")
+      .is("paid_credit_lot_id", null)
       .in("status", ["reserved", "completed"]);
 
     if (error) {
-      console.error("Student credit count failed:", error.message);
+      console.error("Free credit count failed:", error.message);
       return 0;
     }
 
     return Math.max(0, STUDENT_FREE_LIMIT - (count ?? 0));
   } catch (error) {
-    console.error("Student credit count error:", error);
+    console.error("Free credit count error:", error);
+    return 0;
+  }
+}
+
+async function getStudentPaidRemainingCredits(
+  studentId: string
+): Promise<number> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("student_paid_credit_lots")
+      .select("remaining_credits")
+      .eq("student_id", studentId)
+      .gt("remaining_credits", 0)
+      .gt("expires_at", new Date().toISOString());
+
+    if (error) {
+      console.error("Paid credit count failed:", error.message);
+      return 0;
+    }
+
+    return (data ?? []).reduce(
+      (total, lot) => total + Number(lot.remaining_credits || 0),
+      0
+    );
+  } catch (error) {
+    console.error("Paid credit count error:", error);
     return 0;
   }
 }
@@ -326,6 +353,7 @@ function createNotesStream(
   model: string,
   language: string,
   remaining: number,
+  paidRemaining: number,
   headers: Record<string, string> = {}
 ): Response {
   const encoder = new TextEncoder();
@@ -354,6 +382,7 @@ function createNotesStream(
           language,
           freeLimit: STUDENT_FREE_LIMIT,
           remaining,
+          paidRemaining,
           cached: true,
         });
 
@@ -395,7 +424,10 @@ export async function POST(request: Request) {
 
   if (!controls) {
     return NextResponse.json(
-      { error: "AI service is temporarily unavailable. Please try again later." },
+      {
+        error:
+          "AI service is temporarily unavailable. Please try again later.",
+      },
       { status: 503 }
     );
   }
@@ -518,7 +550,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // Check cache before reserving a student credit.
+  // Cache lookup happens before any credit reservation.
   const cacheKey = getCacheKey(
     subjectCode,
     subjectName,
@@ -530,7 +562,11 @@ export async function POST(request: Request) {
   const cached = await getCachedNotes(cacheKey);
 
   if (cached) {
-    const remaining = await getStudentRemainingCredits(user.id);
+    const [freeRemaining, paidRemaining] = await Promise.all([
+      getStudentRemainingCredits(user.id),
+      getStudentPaidRemainingCredits(user.id),
+    ]);
+
     const requestId = randomUUID();
 
     await insertGenerationLog({
@@ -555,37 +591,39 @@ export async function POST(request: Request) {
       cached.notes,
       cached.model ?? "cache",
       language,
-      remaining,
+      freeRemaining,
+      paidRemaining,
       {
         "X-RateLimit-Limit": String(controls.hourlyLimit),
         "X-RateLimit-Remaining": String(rateLimit.remaining),
         "X-Free-Generations-Limit": String(STUDENT_FREE_LIMIT),
-        "X-Free-Generations-Remaining": String(remaining),
+        "X-Free-Generations-Remaining": String(freeRemaining),
+        "X-Paid-Generations-Remaining": String(paidRemaining),
       }
     );
   }
 
-  // Reserve one of the student's 7 free generations.
-  const { data: usageData, error: usageError } = await supabaseAdmin.rpc(
-    "reserve_student_ai_generation",
-    {
+  // First reserve a free generation.
+  const { data: freeUsageData, error: freeUsageError } =
+    await supabaseAdmin.rpc("reserve_student_ai_generation", {
       p_student_id: user.id,
       p_limit: STUDENT_FREE_LIMIT,
-    }
-  );
+    });
 
-  const usage = Array.isArray(usageData) ? usageData[0] : usageData;
+  const freeUsage = Array.isArray(freeUsageData)
+    ? freeUsageData[0]
+    : freeUsageData;
 
   if (
-    usageError ||
-    !usage ||
-    typeof usage.allowed !== "boolean" ||
-    typeof usage.remaining !== "number" ||
-    typeof usage.used !== "number"
+    freeUsageError ||
+    !freeUsage ||
+    typeof freeUsage.allowed !== "boolean" ||
+    typeof freeUsage.remaining !== "number" ||
+    typeof freeUsage.used !== "number"
   ) {
     console.error(
-      "Student AI usage reservation failed:",
-      usageError?.message
+      "Free AI usage reservation failed:",
+      freeUsageError?.message
     );
 
     return NextResponse.json(
@@ -597,33 +635,79 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!usage.allowed) {
-    return NextResponse.json(
-      {
-        error:
-          "Your 7 free AI Notes generations have been used. Paid generations will be available soon.",
-        freeLimit: STUDENT_FREE_LIMIT,
-        used: usage.used,
-        remaining: 0,
-      },
-      {
-        status: 429,
-        headers: {
-          "X-Free-Generations-Limit": String(STUDENT_FREE_LIMIT),
-          "X-Free-Generations-Remaining": "0",
-        },
-      }
-    );
-  }
+  let studentUsageId: number | string | null = null;
+  let creditType: "free" | "paid" | null = null;
+  let freeRemaining = freeUsage.remaining;
+  let paidRemaining = await getStudentPaidRemainingCredits(user.id);
 
-  const studentUsageId = usage.usage_id as number | string;
+  if (freeUsage.allowed) {
+    studentUsageId = freeUsage.usage_id;
+    creditType = "free";
+  } else {
+    // Free credits exhausted: try reserving a purchased credit.
+    const { data: paidUsageData, error: paidUsageError } =
+      await supabaseAdmin.rpc("reserve_student_paid_ai_credit", {
+        p_student_id: user.id,
+      });
+
+    const paidUsage = Array.isArray(paidUsageData)
+      ? paidUsageData[0]
+      : paidUsageData;
+
+    if (
+      paidUsageError ||
+      !paidUsage ||
+      typeof paidUsage.allowed !== "boolean" ||
+      typeof paidUsage.remaining !== "number"
+    ) {
+      console.error(
+        "Paid AI credit reservation failed:",
+        paidUsageError?.message
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Unable to verify your purchased AI credits. Please try again.",
+        },
+        { status: 503 }
+      );
+    }
+
+    if (!paidUsage.allowed) {
+      return NextResponse.json(
+        {
+          error:
+            "Your 7 free AI Notes generations have been used and you have no active paid credits. Please purchase an AI Notes plan to continue.",
+          freeLimit: STUDENT_FREE_LIMIT,
+          used: freeUsage.used,
+          remaining: 0,
+          paidRemaining: 0,
+          needsPurchase: true,
+        },
+        {
+          status: 429,
+          headers: {
+            "X-Free-Generations-Limit": String(STUDENT_FREE_LIMIT),
+            "X-Free-Generations-Remaining": "0",
+            "X-Paid-Generations-Remaining": "0",
+          },
+        }
+      );
+    }
+
+    studentUsageId = paidUsage.usage_id;
+    creditType = "paid";
+    freeRemaining = 0;
+    paidRemaining = paidUsage.remaining;
+  }
 
   if (studentUsageId === null || studentUsageId === undefined) {
     console.error("Student AI usage reservation returned no usage ID.");
 
     return NextResponse.json(
       {
-        error: "Unable to reserve your free generation. Please try again.",
+        error: "Unable to reserve your generation. Please try again.",
       },
       { status: 503 }
     );
@@ -875,7 +959,6 @@ FINAL CHECK:
               throw new Error("Gemini returned an empty response.");
             }
 
-            // Save completed notes for future reuse.
             await saveCachedNotes(
               cacheKey,
               subjectCode,
@@ -902,14 +985,22 @@ FINAL CHECK:
               "completed"
             );
 
-            console.log(`Generation completed using ${model}`);
+            if (!usageCompleted) {
+              throw new Error("Unable to finalize AI credit usage.");
+            }
+
+            console.log(
+              `Generation completed using ${model}. Credit type: ${creditType}`
+            );
 
             emit({
               type: "done",
               model,
               language,
               freeLimit: STUDENT_FREE_LIMIT,
-              remaining: usage.remaining,
+              remaining: freeRemaining,
+              paidRemaining,
+              creditType,
               cached: false,
             });
 
@@ -1022,7 +1113,22 @@ FINAL CHECK:
         closeStream();
       } finally {
         if (!usageCompleted) {
-          await updateStudentUsage(studentUsageId, "failed");
+          if (creditType === "paid") {
+            // Refund paid credit only if its usage is still reserved.
+            const { error } = await supabaseAdmin.rpc(
+              "release_student_paid_ai_credit",
+              {
+                p_usage_id: studentUsageId,
+                p_student_id: user.id,
+              }
+            );
+
+            if (error) {
+              console.error("Paid AI credit refund failed:", error.message);
+            }
+          } else if (creditType === "free") {
+            await updateStudentUsage(studentUsageId, "failed");
+          }
         }
 
         request.signal.removeEventListener("abort", handleDisconnect);
@@ -1044,7 +1150,8 @@ FINAL CHECK:
       "X-RateLimit-Limit": String(controls.hourlyLimit),
       "X-RateLimit-Remaining": String(rateLimit.remaining),
       "X-Free-Generations-Limit": String(STUDENT_FREE_LIMIT),
-      "X-Free-Generations-Remaining": String(usage.remaining),
+      "X-Free-Generations-Remaining": String(freeRemaining),
+      "X-Paid-Generations-Remaining": String(paidRemaining),
     },
   });
 }

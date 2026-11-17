@@ -18,12 +18,60 @@ type UnitLearningProps = {
   onBack: () => void;
 };
 
+type CreditPlan = {
+  id: string;
+  name: string;
+  description: string | null;
+  pricePaise: number;
+  credits: number;
+  validityDays: number;
+  isFeatured: boolean;
+};
+
 type AICredits = {
   loggedIn: boolean;
   freeLimit: number;
   used: number;
   remaining: number;
+  freeRemaining: number;
+  paidRemaining: number;
+  totalRemaining: number;
+  plans: CreditPlan[];
 };
+
+type RazorpayResponse = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
+type RazorpayOptions = {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  prefill?: {
+    email?: string;
+  };
+  theme: { color: string };
+  handler: (response: RazorpayResponse) => void;
+  modal?: {
+    ondismiss?: () => void;
+  };
+};
+
+type RazorpayInstance = {
+  open: () => void;
+  on: (event: string, callback: (response: any) => void) => void;
+};
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: RazorpayOptions) => RazorpayInstance;
+  }
+}
 
 function cleanMarkdown(content: string) {
   return content
@@ -49,6 +97,32 @@ function extractJokes(notes: string): string[] {
     .map((match) => match[1].trim())
     .filter(Boolean)
     .slice(0, 2);
+}
+
+let razorpayScriptPromise: Promise<boolean> | null = null;
+
+function loadRazorpayScript(): Promise<boolean> {
+  if (typeof window === "undefined") return Promise.resolve(false);
+
+  if (window.Razorpay) return Promise.resolve(true);
+
+  if (razorpayScriptPromise) return razorpayScriptPromise;
+
+  razorpayScriptPromise = new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+
+    script.onload = () => resolve(Boolean(window.Razorpay));
+    script.onerror = () => {
+      razorpayScriptPromise = null;
+      resolve(false);
+    };
+
+    document.body.appendChild(script);
+  });
+
+  return razorpayScriptPromise;
 }
 
 function GeneratedNotes({
@@ -216,16 +290,16 @@ export default function UnitLearning({
   const [copied, setCopied] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
-  // AI free credits
   const [credits, setCredits] = useState<AICredits | null>(null);
   const [creditsLoading, setCreditsLoading] = useState(true);
   const [creditsError, setCreditsError] = useState("");
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [paymentMessage, setPaymentMessage] = useState("");
 
   const activeNotesKeyRef = useRef("");
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const topic = topics[selectedTopic] ?? "";
-
   const progressKey = `studysprint-progress-${subjectCode}-${unitIndex}`;
 
   const notesKey = [
@@ -239,7 +313,6 @@ export default function UnitLearning({
 
   const jokesKey = `${notesKey}-jokes`;
 
-  // Fetch the student's current free AI credits.
   async function refreshCredits() {
     try {
       setCreditsError("");
@@ -258,6 +331,10 @@ export default function UnitLearning({
           freeLimit: 7,
           used: 0,
           remaining: 0,
+          freeRemaining: 0,
+          paidRemaining: 0,
+          totalRemaining: 0,
+          plans: [],
         });
         return;
       }
@@ -271,6 +348,12 @@ export default function UnitLearning({
         freeLimit: data.freeLimit,
         used: data.used,
         remaining: data.remaining,
+        freeRemaining: data.freeRemaining ?? data.remaining,
+        paidRemaining: data.paidRemaining ?? 0,
+        totalRemaining:
+          data.totalRemaining ??
+          (data.freeRemaining ?? data.remaining) + (data.paidRemaining ?? 0),
+        plans: Array.isArray(data.plans) ? data.plans : [],
       });
     } catch (error) {
       setCreditsError(
@@ -340,6 +423,118 @@ export default function UnitLearning({
     };
   }, [notesKey]);
 
+  async function buyCreditPlan(plan: CreditPlan) {
+    if (checkoutLoading) return;
+
+    if (!credits?.loggedIn) {
+      setAiError("Payment karne ke liye pehle login karo.");
+      return;
+    }
+
+    setCheckoutLoading(true);
+    setPaymentMessage("");
+    setAiError("");
+
+    try {
+      const scriptLoaded = await loadRazorpayScript();
+
+      if (!scriptLoaded || !window.Razorpay) {
+        throw new Error(
+          "Razorpay Checkout load nahi ho paya. Internet connection check karo."
+        );
+      }
+
+      const orderResponse = await fetch("/api/payments/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ planId: plan.id }),
+      });
+
+      const orderData = await orderResponse.json();
+
+      if (!orderResponse.ok || !orderData.success) {
+        throw new Error(orderData.error || "Payment order create nahi hua.");
+      }
+
+      const options: RazorpayOptions = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "StudySprint",
+        description: `${orderData.credits} AI Notes generations`,
+        order_id: orderData.orderId,
+        theme: { color: "#4f46e5" },
+
+        handler: async (paymentResponse) => {
+          setCheckoutLoading(true);
+          setPaymentMessage("Payment verify ho raha hai...");
+
+          try {
+            const verifyResponse = await fetch("/api/payments/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "same-origin",
+              body: JSON.stringify(paymentResponse),
+            });
+
+            const verifyData = await verifyResponse.json();
+
+            if (!verifyResponse.ok || !verifyData.success) {
+              throw new Error(
+                verifyData.error ||
+                  "Payment verification pending hai. Please refresh after some time."
+              );
+            }
+
+            setPaymentMessage(
+              `Payment successful! ${verifyData.creditsAdded} AI generations add ho gayi hain.`
+            );
+
+            await refreshCredits();
+          } catch (error) {
+            setPaymentMessage(
+              error instanceof Error
+                ? error.message
+                : "Payment verify nahi ho paya. Please contact support."
+            );
+
+            // Webhook may still activate credits if browser verification fails.
+            await refreshCredits();
+          } finally {
+            setCheckoutLoading(false);
+          }
+        },
+
+        modal: {
+          ondismiss: () => {
+            setCheckoutLoading(false);
+            setPaymentMessage("Payment window close kar di gayi.");
+          },
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+
+      razorpay.on("payment.failed", (response) => {
+        setCheckoutLoading(false);
+        setPaymentMessage(
+          response?.error?.description ||
+            "Payment fail ho gaya. Dobara try kar sakte ho."
+        );
+      });
+
+      razorpay.open();
+    } catch (error) {
+      setAiError(
+        error instanceof Error
+          ? error.message
+          : "Payment start nahi ho paya."
+      );
+      setCheckoutLoading(false);
+    }
+  }
+
   async function generateAINotes() {
     if (!topic.trim() || isGenerating) return;
 
@@ -353,8 +548,8 @@ export default function UnitLearning({
       return;
     }
 
-    if (credits.remaining <= 0) {
-      setAiError("Tumhare 7 free AI Notes generations use ho chuke hain.");
+    if (credits.totalRemaining <= 0) {
+      setAiError("Tumhare free aur paid AI credits khatam ho chuke hain.");
       return;
     }
 
@@ -400,12 +595,21 @@ export default function UnitLearning({
 
       if (!response.ok) {
         let errorMessage = "Notes generate nahi ho paye.";
+        let needsPurchase = false;
 
         try {
           const data = await response.json();
           errorMessage = data.error || errorMessage;
+          needsPurchase = data.needsPurchase === true;
         } catch {
           // Keep default message.
+        }
+
+        if (needsPurchase) {
+          await refreshCredits();
+          setPaymentMessage(
+            "Free aur paid credits khatam ho gaye hain. Neeche se plan choose karo."
+          );
         }
 
         throw new Error(errorMessage);
@@ -443,14 +647,33 @@ export default function UnitLearning({
           streamCompleted = true;
           generationSucceeded = true;
 
-          // Update credits immediately using the server response.
           if (typeof data.remaining === "number") {
             setCredits((current) =>
               current
                 ? {
                     ...current,
                     remaining: data.remaining,
-                    used: current.freeLimit - data.remaining,
+                    freeRemaining:
+                      data.creditType === "free"
+                        ? data.remaining
+                        : current.freeRemaining,
+                    used:
+                      data.creditType === "free"
+                        ? current.freeLimit - data.remaining
+                        : current.used,
+                  }
+                : current
+            );
+          }
+
+          if (typeof data.paidRemaining === "number") {
+            setCredits((current) =>
+              current
+                ? {
+                    ...current,
+                    paidRemaining: data.paidRemaining,
+                    totalRemaining:
+                      current.freeRemaining + data.paidRemaining,
                   }
                 : current
             );
@@ -521,6 +744,8 @@ export default function UnitLearning({
           getSavedNotes().some((item) => item.id === requestKey)
         );
       }
+
+      await refreshCredits();
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         return;
@@ -538,8 +763,6 @@ export default function UnitLearning({
         );
       }
     } finally {
-      // Failed generations are released by the server.
-      // Refresh after the server has had time to release the reservation.
       if (!generationSucceeded) {
         await new Promise((resolve) => window.setTimeout(resolve, 700));
         await refreshCredits();
@@ -631,9 +854,7 @@ export default function UnitLearning({
     try {
       const response = await fetch("/api/share-notes", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           subjectName,
           unitTitle,
@@ -650,10 +871,7 @@ export default function UnitLearning({
 
       const shareUrl = `${window.location.origin}/share/${data.id}`;
 
-      if (
-        typeof navigator !== "undefined" &&
-        typeof navigator.share === "function"
-      ) {
+      if (typeof navigator.share === "function") {
         await navigator.share({
           title: `${topic} - StudySprint`,
           text: `${subjectName} | ${unitTitle}\nStudySprint par ye notes dekho:`,
@@ -661,7 +879,6 @@ export default function UnitLearning({
         });
       } else {
         await navigator.clipboard.writeText(shareUrl);
-
         window.alert(
           "Share link copy ho gaya! Ab WhatsApp par paste karke bhej do."
         );
@@ -703,7 +920,7 @@ export default function UnitLearning({
   const canGenerate =
     !creditsLoading &&
     credits?.loggedIn === true &&
-    credits.remaining > 0;
+    credits.totalRemaining > 0;
 
   return (
     <main className="min-w-0 py-2">
@@ -817,27 +1034,47 @@ export default function UnitLearning({
                 questions and revision points.
               </p>
 
-              {/* FREE AI CREDITS DISPLAY */}
+              {/* CREDIT BALANCE */}
               <div className="mt-5 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
                 {creditsLoading ? (
                   <p className="text-sm font-semibold text-indigo-800">
-                    Checking your free AI credits...
+                    Checking your AI credits...
                   </p>
                 ) : credits?.loggedIn ? (
                   <>
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <p className="text-sm font-bold text-indigo-950">
-                          Your free AI generations
+                          Your AI generations
                         </p>
                         <p className="mt-1 text-xs text-indigo-700">
-                          Lifetime free allowance
+                          Free and purchased credits
                         </p>
                       </div>
 
                       <p className="text-lg font-black text-indigo-800">
-                        {credits.remaining}/{credits.freeLimit} left
+                        {credits.totalRemaining} total left
                       </p>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <div className="rounded-lg bg-white p-3">
+                        <p className="text-xs font-semibold text-slate-500">
+                          Free credits
+                        </p>
+                        <p className="mt-1 text-xl font-black text-indigo-700">
+                          {credits.freeRemaining}/{credits.freeLimit}
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg bg-white p-3">
+                        <p className="text-xs font-semibold text-slate-500">
+                          Purchased credits
+                        </p>
+                        <p className="mt-1 text-xl font-black text-green-700">
+                          {credits.paidRemaining}
+                        </p>
+                      </div>
                     </div>
 
                     <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-indigo-200">
@@ -845,16 +1082,17 @@ export default function UnitLearning({
                         className="h-full rounded-full bg-indigo-600 transition-all duration-500"
                         style={{
                           width: `${
-                            (credits.remaining / credits.freeLimit) * 100
+                            credits.freeLimit > 0
+                              ? (credits.freeRemaining / credits.freeLimit) * 100
+                              : 0
                           }%`,
                         }}
                       />
                     </div>
 
                     <p className="mt-2 text-xs text-indigo-700">
-                      {credits.used} generation
-                      {credits.used === 1 ? "" : "s"} used ·{" "}
-                      {credits.remaining} remaining
+                      {credits.used} free generations used ·{" "}
+                      {credits.paidRemaining} paid generations available
                     </p>
                   </>
                 ) : (
@@ -891,19 +1129,111 @@ export default function UnitLearning({
                 )}
               </div>
 
-              {/* NO CREDITS MESSAGE */}
-              {credits?.loggedIn && credits.remaining <= 0 && (
-                <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
-                  <p className="font-bold text-amber-950">
-                    🎉 Your 7 free generations are used!
-                  </p>
-                  <p className="mt-1 text-sm leading-6 text-amber-900">
-                    Tumhare saare free AI Notes credits use ho chuke hain.
-                    Additional paid generations jald available hongi.
-                  </p>
-                  <div className="mt-3 inline-flex rounded-lg bg-amber-200 px-3 py-2 text-xs font-bold text-amber-950">
-                    Upgrade Coming Soon
+              {/* PURCHASE PLANS */}
+              {credits?.loggedIn &&
+                credits.plans.length > 0 &&
+                credits.freeRemaining <= 0 && (
+                  <div className="mt-5 rounded-2xl border border-indigo-200 bg-white p-4 sm:p-5">
+                    <div className="mb-4">
+                      <p className="text-xs font-bold uppercase tracking-wider text-indigo-600">
+                        StudySprint AI Credits
+                      </p>
+                      <h3 className="mt-1 text-lg font-black text-slate-900">
+                        Get more AI generations
+                      </h3>
+                      <p className="mt-1 text-sm leading-6 text-slate-600">
+                        Apni requirement ke according credit plan choose karo.
+                        Payment successful aur verified hone par credits
+                        automatically add ho jayenge.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {credits.plans.map((plan) => (
+                        <div
+                          key={plan.id}
+                          className={`relative rounded-xl border p-4 ${
+                            plan.isFeatured
+                              ? "border-indigo-400 bg-indigo-50"
+                              : "border-slate-200 bg-white"
+                          }`}
+                        >
+                          {plan.isFeatured && (
+                            <span className="mb-2 inline-flex rounded-full bg-indigo-600 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-white">
+                              Popular
+                            </span>
+                          )}
+
+                          <h4 className="text-base font-black text-slate-900">
+                            {plan.name}
+                          </h4>
+
+                          {plan.description && (
+                            <p className="mt-1 text-xs leading-5 text-slate-600">
+                              {plan.description}
+                            </p>
+                          )}
+
+                          <p className="mt-3 text-2xl font-black text-indigo-700">
+                            ₹{(plan.pricePaise / 100).toFixed(2)}
+                          </p>
+
+                          <div className="mt-3 space-y-1 text-sm text-slate-700">
+                            <p>
+                              <strong>{plan.credits}</strong> AI generations
+                            </p>
+                            <p>
+                              Valid for{" "}
+                              <strong>{plan.validityDays} days</strong>
+                            </p>
+                          </div>
+
+                          <button
+                            onClick={() => void buyCreditPlan(plan)}
+                            disabled={checkoutLoading}
+                            className="mt-4 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {checkoutLoading
+                              ? "Please wait..."
+                              : "Buy this plan"}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <p className="mt-3 text-xs leading-5 text-slate-500">
+                      Payments are processed securely through Razorpay.
+                      Purchased credits expire after their plan validity.
+                    </p>
                   </div>
+                )}
+
+              {credits?.loggedIn &&
+                credits.freeRemaining <= 0 &&
+                credits.plans.length === 0 && (
+                  <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
+                    <p className="font-bold text-amber-950">
+                      Your free generations are used!
+                    </p>
+                    <p className="mt-1 text-sm text-amber-900">
+                      Abhi koi active purchase plan available nahi hai.
+                      Please baad mein check karo.
+                    </p>
+                  </div>
+                )}
+
+              {paymentMessage && (
+                <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+                  {paymentMessage}
+                  <button
+                    onClick={() => {
+                      setCreditsLoading(true);
+                      void refreshCredits();
+                    }}
+                    className="ml-2 font-bold underline"
+                  >
+                    Refresh credits
+                  </button>
                 </div>
               )}
 
@@ -956,8 +1286,8 @@ export default function UnitLearning({
                       ? "Checking credits..."
                       : !credits?.loggedIn
                         ? "Login to Generate Notes"
-                        : credits.remaining <= 0
-                          ? "Free Credits Used"
+                        : credits.totalRemaining <= 0
+                          ? "No Credits Available"
                           : generatedNotes && notesAreLoaded
                             ? "↻ Regenerate AI Notes"
                             : "✨ Generate AI Notes"}

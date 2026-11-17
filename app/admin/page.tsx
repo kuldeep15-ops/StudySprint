@@ -2,7 +2,13 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/app/lib/supabaseServer";
 import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
-import { logoutAdmin, updateAISettings } from "./actions";
+import {
+  logoutAdmin,
+  updateAISettings,
+  createCreditPlan,
+  updateCreditPlan,
+  deleteCreditPlan,
+} from "./actions";
 
 export const instant = false;
 
@@ -27,6 +33,19 @@ type GenerationLog = {
   duration_ms: number | null;
   error_status: number | null;
   error_message: string | null;
+};
+
+type CreditPlan = {
+  id: string;
+  name: string;
+  description: string;
+  price_paise: number;
+  credits: number;
+  validity_days: number;
+  is_active: boolean;
+  is_featured: boolean;
+  sort_order: number;
+  created_at: string;
 };
 
 function formatNumber(value: number) {
@@ -62,10 +81,51 @@ function StatCard({
   );
 }
 
+function PlanInput({
+  label,
+  name,
+  type = "text",
+  defaultValue,
+  required = true,
+  min,
+  max,
+  step,
+}: {
+  label: string;
+  name: string;
+  type?: string;
+  defaultValue?: string | number;
+  required?: boolean;
+  min?: string | number;
+  max?: string | number;
+  step?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-semibold text-slate-700">
+        {label}
+      </label>
+      <input
+        name={name}
+        type={type}
+        defaultValue={defaultValue}
+        required={required}
+        min={min}
+        max={max}
+        step={step}
+        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-500"
+      />
+    </div>
+  );
+}
+
 export default async function AdminDashboard({
   searchParams,
 }: {
-  searchParams?: Promise<{ settings?: string }>;
+  searchParams?: Promise<{
+    settings?: string;
+    plans?: string;
+  }>;
 }) {
   const supabase = await createSupabaseServerClient();
 
@@ -81,8 +141,14 @@ export default async function AdminDashboard({
 
   const params = await searchParams;
   const settingsMessage = params?.settings;
+  const plansMessage = params?.plans;
 
-  const [countResult, logsResult, settingsResult] = await Promise.all([
+  const [
+    countResult,
+    logsResult,
+    settingsResult,
+    plansResult,
+  ] = await Promise.all([
     supabaseAdmin
       .from("ai_generation_logs")
       .select("id", { count: "exact", head: true }),
@@ -99,9 +165,16 @@ export default async function AdminDashboard({
       .from("admin_settings")
       .select("key, value")
       .in("key", ["ai_enabled", "ai_hourly_limit"]),
+
+    supabaseAdmin
+      .from("ai_credit_plans")
+      .select("*")
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false }),
   ]);
 
   const logs = (logsResult.data ?? []) as GenerationLog[];
+  const plans = (plansResult.data ?? []) as CreditPlan[];
   const totalGenerations = countResult.count ?? 0;
 
   const settings = settingsResult.data ?? [];
@@ -244,11 +317,47 @@ export default async function AdminDashboard({
           </div>
         )}
 
+        {plansMessage === "created" && (
+          <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+            Credit plan successfully created.
+          </div>
+        )}
+
+        {plansMessage === "updated" && (
+          <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+            Credit plan successfully updated.
+          </div>
+        )}
+
+        {plansMessage === "deleted" && (
+          <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+            Credit plan deleted.
+          </div>
+        )}
+
+        {plansMessage === "invalid" && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            Invalid plan details. Please check all fields and try again.
+          </div>
+        )}
+
+        {plansMessage === "error" && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            Plan could not be saved. Check server logs.
+          </div>
+        )}
+
         {countResult.error || logsResult.error || settingsResult.error ? (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             Some dashboard data could not be loaded. Check Supabase configuration.
           </div>
         ) : null}
+
+        {plansResult.error && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            Credit plans could not be loaded. Check the ai_credit_plans table.
+          </div>
+        )}
 
         <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -324,6 +433,253 @@ export default async function AdminDashboard({
               Save AI Settings
             </button>
           </form>
+        </section>
+
+        {/* CREDIT PLAN MANAGEMENT */}
+        <section
+          id="credit-plans"
+          className="space-y-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+        >
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">
+              AI Credit Plans
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Create and manage the paid AI notes credit packages available to students.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+            <h4 className="font-bold text-slate-900">Create New Plan</h4>
+            <p className="mt-1 text-xs text-slate-600">
+              Price is in INR. Students will see this plan when they run out of free credits.
+            </p>
+
+            <form action={createCreditPlan} className="mt-5 space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <PlanInput label="Plan Name" name="name" />
+                <PlanInput
+                  label="Price (₹)"
+                  name="price"
+                  type="number"
+                  min="1"
+                  step="0.01"
+                />
+                <PlanInput
+                  label="AI Credits"
+                  name="credits"
+                  type="number"
+                  min="1"
+                  max="10000"
+                />
+                <PlanInput
+                  label="Validity (Days)"
+                  name="validityDays"
+                  type="number"
+                  min="1"
+                  max="3650"
+                />
+                <PlanInput
+                  label="Display Order"
+                  name="sortOrder"
+                  type="number"
+                  min="0"
+                  max="10000"
+                  defaultValue={0}
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  rows={2}
+                  maxLength={300}
+                  placeholder="Describe what this plan offers..."
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <input
+                  type="checkbox"
+                  name="isFeatured"
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+                Mark as featured plan
+              </label>
+
+              <button
+                type="submit"
+                className="rounded-lg bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-700"
+              >
+                Create Credit Plan
+              </button>
+            </form>
+          </div>
+
+          <div>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <h4 className="font-bold text-slate-900">
+                Existing Plans ({plans.length})
+              </h4>
+              <p className="text-xs text-slate-500">
+                Active plans can be offered to students.
+              </p>
+            </div>
+
+            {plans.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center">
+                <p className="font-semibold text-slate-700">
+                  No credit plans created yet.
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  Create your first plan using the form above.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {plans.map((plan) => (
+                  <div
+                    key={plan.id}
+                    className="rounded-xl border border-slate-200 p-4"
+                  >
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h5 className="font-bold text-slate-900">
+                            {plan.name}
+                          </h5>
+
+                          {plan.is_featured && (
+                            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                              Featured
+                            </span>
+                          )}
+
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                              plan.is_active
+                                ? "bg-green-100 text-green-700"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {plan.is_active ? "Active" : "Inactive"}
+                          </span>
+                        </div>
+
+                        <p className="mt-1 text-sm text-slate-500">
+                          ₹{(plan.price_paise / 100).toFixed(2)} ·{" "}
+                          {formatNumber(plan.credits)} credits ·{" "}
+                          {plan.validity_days} days validity
+                        </p>
+                      </div>
+                    </div>
+
+                    <form action={updateCreditPlan} className="space-y-4">
+                      <input type="hidden" name="id" value={plan.id} />
+
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <PlanInput
+                          label="Plan Name"
+                          name="name"
+                          defaultValue={plan.name}
+                        />
+                        <PlanInput
+                          label="Price (₹)"
+                          name="price"
+                          type="number"
+                          min="1"
+                          step="0.01"
+                          defaultValue={(plan.price_paise / 100).toFixed(2)}
+                        />
+                        <PlanInput
+                          label="AI Credits"
+                          name="credits"
+                          type="number"
+                          min="1"
+                          max="10000"
+                          defaultValue={plan.credits}
+                        />
+                        <PlanInput
+                          label="Validity (Days)"
+                          name="validityDays"
+                          type="number"
+                          min="1"
+                          max="3650"
+                          defaultValue={plan.validity_days}
+                        />
+                        <PlanInput
+                          label="Display Order"
+                          name="sortOrder"
+                          type="number"
+                          min="0"
+                          max="10000"
+                          defaultValue={plan.sort_order}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold text-slate-700">
+                          Description
+                        </label>
+                        <textarea
+                          name="description"
+                          rows={2}
+                          maxLength={300}
+                          defaultValue={plan.description ?? ""}
+                          className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-500"
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap gap-5">
+                        <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                          <input
+                            type="checkbox"
+                            name="isActive"
+                            defaultChecked={plan.is_active}
+                            className="h-4 w-4 rounded border-slate-300"
+                          />
+                          Active
+                        </label>
+
+                        <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                          <input
+                            type="checkbox"
+                            name="isFeatured"
+                            defaultChecked={plan.is_featured}
+                            className="h-4 w-4 rounded border-slate-300"
+                          />
+                          Featured
+                        </label>
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700"
+                      >
+                        Save Plan Changes
+                      </button>
+                    </form>
+
+                    <div className="mt-4 border-t border-slate-100 pt-4">
+                      <form action={deleteCreditPlan}>
+                        <input type="hidden" name="id" value={plan.id} />
+                        <button
+                          type="submit"
+                          className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+                        >
+                          Delete Plan
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </section>
 
         <section>
