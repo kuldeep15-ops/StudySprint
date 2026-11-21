@@ -461,7 +461,7 @@ export default function UnitLearning({
         key: orderData.keyId,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: "StudySprint",
+        name: "Padhatoz",
         description: `${orderData.credits} AI Notes generations`,
         order_id: orderData.orderId,
         theme: { color: "#4f46e5" },
@@ -873,8 +873,8 @@ export default function UnitLearning({
 
       if (typeof navigator.share === "function") {
         await navigator.share({
-          title: `${topic} - StudySprint`,
-          text: `${subjectName} | ${unitTitle}\nStudySprint par ye notes dekho:`,
+          title: `${topic} - Padhatoz`,
+          text: `${subjectName} | ${unitTitle}\nPadhatoz par ye notes dekho:`,
           url: shareUrl,
         });
       } else {
@@ -1136,7 +1136,7 @@ export default function UnitLearning({
                   <div className="mt-5 rounded-2xl border border-indigo-200 bg-white p-4 sm:p-5">
                     <div className="mb-4">
                       <p className="text-xs font-bold uppercase tracking-wider text-indigo-600">
-                        StudySprint AI Credits
+                        Padhatoz AI Credits
                       </p>
                       <h3 className="mt-1 text-lg font-black text-slate-900">
                         Get more AI generations

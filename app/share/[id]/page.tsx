@@ -39,17 +39,17 @@ export async function generateMetadata({
   const notes = await getSharedNotes(id);
 
   if (!notes) {
-    return { title: "Notes not found | StudySprint" };
+    return { title: "Notes not found | Padhatoz" };
   }
 
   return {
-    title: `${notes.topic} | StudySprint`,
-    description: `${notes.subject_name} - ${notes.unit_title}. Read and study notes on StudySprint.`,
+    title: `${notes.topic} | Padhatoz`,
+    description: `${notes.subject_name} - ${notes.unit_title}. Read and study notes on Padhatoz.`,
     openGraph: {
-      title: `${notes.topic} | StudySprint`,
-      description: `${notes.subject_name} - ${notes.unit_title}. Read these notes on StudySprint.`,
+      title: `${notes.topic} | Padhatoz`,
+      description: `${notes.subject_name} - ${notes.unit_title}. Read these notes on Padhatoz.`,
       type: "article",
-      siteName: "StudySprint",
+      siteName: "Padhatoz",
     },
   };
 }
@@ -70,7 +70,7 @@ export default async function SharedNotesPage({ params }: Props) {
             href="/"
             className="text-2xl font-extrabold tracking-tight text-blue-700"
           >
-            StudySprint
+            Padhatoz
           </a>
           <p className="mt-2 text-sm text-slate-500">
             Your learning companion for GGSIPU students
@@ -132,11 +132,11 @@ export default async function SharedNotesPage({ params }: Props) {
             href="/"
             className="inline-flex rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700"
           >
-            Explore StudySprint
+            Explore Padhatoz
           </a>
 
           <p className="mt-5 text-xs text-slate-400">
-            Shared using StudySprint
+            Shared using Padhatoz
           </p>
         </footer>
       </div>

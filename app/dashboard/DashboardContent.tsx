@@ -29,7 +29,7 @@ export default async function DashboardContent() {
     <main className="min-h-[75vh] bg-slate-50 px-4 py-12">
       <div className="mx-auto max-w-4xl rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <h1 className="text-3xl font-black text-slate-900">My Dashboard</h1>
-        <p className="mt-2 text-slate-500">Welcome to StudySprint!</p>
+        <p className="mt-2 text-slate-500">Welcome to Padhatoz!</p>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
           <div className="rounded-xl bg-indigo-50 p-5">

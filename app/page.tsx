@@ -99,14 +99,14 @@ export default function HomePage() {
           <button
             onClick={() => router.push("/")}
             className="flex items-center gap-3 text-left"
-            aria-label="StudySprint home"
+            aria-label="Padhatoz home"
           >
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 text-xl font-black text-white">
-              S
+              P
             </span>
             <span>
               <span className="block text-xl font-black tracking-tight">
-                StudySprint
+                Padhatoz
               </span>
               <span className="block text-xs text-slate-500">
                 Your university study companion

@@ -88,7 +88,7 @@ function SubjectPageContent() {
             onClick={() => router.push("/")}
             className="text-left text-xl font-black text-indigo-700"
           >
-            StudySprint
+            Padhatoz
           </button>
           <button
             onClick={() => router.push("/")}

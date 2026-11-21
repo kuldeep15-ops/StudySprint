@@ -15,9 +15,9 @@ const geistMono = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "StudySprint | Your University Study Companion",
+  title: "Padhatoz | Your University Study Companion",
   description:
-    "StudySprint helps GGSIPU students explore syllabus, unit-wise topics and prepare for university exams.",
+    "Padhatoz helps GGSIPU students explore syllabus, unit-wise topics and prepare for university exams.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -42,7 +42,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               </span>
             </span>
             <span className="text-xs text-slate-500">
-              StudySprint · Your university study companion
+              Padhatoz · Your university study companion
             </span>
           </div>
         </footer>

@@ -24,7 +24,7 @@ export default async function AdminLoginPage({
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-lg">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-black text-slate-900">
-            StudySprint
+            Padhatoz
           </h1>
           <p className="mt-2 text-sm text-slate-500">
             Private Admin Dashboard

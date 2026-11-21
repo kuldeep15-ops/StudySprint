@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -73,7 +74,7 @@ export default function SavedNotesPage() {
       <div className="mx-auto max-w-5xl">
         <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <Link href="/" className="text-xl font-bold text-blue-600">
-            StudySprint
+            Padhatoz
           </Link>
 
           <Link

@@ -13,7 +13,7 @@ import {
 export const instant = false;
 
 export const metadata = {
-  title: "Admin Dashboard | StudySprint",
+  title: "Admin Dashboard | padhatoz",
 };
 
 type GenerationLog = {
@@ -271,7 +271,7 @@ export default async function AdminDashboard({
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
           <div>
             <h1 className="text-2xl font-black text-slate-900">
-              StudySprint Admin
+              padhatoz Admin
             </h1>
             <p className="text-sm text-slate-500">
               Private Administration Panel
