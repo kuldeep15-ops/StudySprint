@@ -462,11 +462,7 @@ export default function HomePage() {
           </div>
         )}
 
-        <p className="mt-7 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-          <strong>Data note:</strong> Har subject ka syllabus official
-          academic scheme aur applicable batch se verify karna zaroori hai.
-          Sample data ko final university syllabus na samjhein.
-        </p>
+        
       </section>
     </main>
   );
