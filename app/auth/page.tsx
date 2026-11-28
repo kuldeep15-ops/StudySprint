@@ -7,7 +7,9 @@ import { createSupabaseBrowserClient } from "@/app/lib/supabaseBrowser";
 
 export default function AuthPage() {
   const router = useRouter();
+
   const [isSignup, setIsSignup] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,6 +24,22 @@ export default function AuthPage() {
 
     try {
       const supabase = createSupabaseBrowserClient();
+
+      if (isForgotPassword) {
+        const { error } = await supabase.auth.resetPasswordForEmail(
+          email.trim(),
+          {
+            redirectTo: `${window.location.origin}/auth/callback?next=/auth/update-password`,
+          }
+        );
+
+        if (error) throw error;
+
+        setMessage(
+          "If an account exists with this email, a password reset link has been sent. Please check your Gmail inbox and spam folder."
+        );
+        return;
+      }
 
       if (isSignup) {
         const { data, error } = await supabase.auth.signUp({
@@ -60,13 +78,26 @@ export default function AuthPage() {
     }
   }
 
+  function resetView() {
+    setIsSignup(false);
+    setIsForgotPassword(false);
+    setPassword("");
+    setError("");
+    setMessage("");
+  }
+
   return (
     <main className="flex min-h-[75vh] items-center justify-center bg-slate-50 px-4 py-12">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-7 shadow-sm">
         <div className="mb-7 text-center">
           <h1 className="text-3xl font-black text-indigo-600">Padhatoz</h1>
+
           <p className="mt-2 text-sm text-slate-500">
-            {isSignup ? "Create your student account" : "Login to your account"}
+            {isForgotPassword
+              ? "Recover your Padhatoz account"
+              : isSignup
+                ? "Create your student account"
+                : "Login to your account"}
           </p>
         </div>
 
@@ -75,6 +106,7 @@ export default function AuthPage() {
             <label className="mb-1 block text-sm font-semibold text-slate-700">
               Gmail address
             </label>
+
             <input
               type="email"
               required
@@ -85,27 +117,50 @@ export default function AuthPage() {
             />
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-slate-700">
-              Password
-            </label>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Minimum 6 characters"
-              className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-indigo-500"
-            />
-          </div>
+          {!isForgotPassword && (
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-slate-700">
+                Password
+              </label>
+
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Minimum 6 characters"
+                className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-indigo-500"
+              />
+            </div>
+          )}
+
+          {!isSignup && !isForgotPassword && (
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsForgotPassword(true);
+                  setError("");
+                  setMessage("");
+                }}
+                className="text-sm font-semibold text-indigo-600 hover:underline"
+              >
+                Forgot Password?
+              </button>
+            </div>
+          )}
 
           {error && (
-            <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>
+            <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+              {error}
+            </p>
           )}
 
           {message && (
-            <p className="rounded-lg bg-green-50 p-3 text-sm text-green-700">{message}</p>
+            <p className="rounded-lg bg-green-50 p-3 text-sm text-green-700">
+              {message}
+            </p>
           )}
 
           <button
@@ -113,23 +168,41 @@ export default function AuthPage() {
             disabled={loading}
             className="w-full rounded-lg bg-indigo-600 px-4 py-3 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
           >
-            {loading ? "Please wait..." : isSignup ? "Create Account" : "Login"}
+            {loading
+              ? "Please wait..."
+              : isForgotPassword
+                ? "Send Recovery Link"
+                : isSignup
+                  ? "Create Account"
+                  : "Login"}
           </button>
         </form>
 
         <div className="mt-6 text-center text-sm text-slate-600">
-          {isSignup ? "Already registered?" : "New to Padhatoz?"}{" "}
-          <button
-            type="button"
-            onClick={() => {
-              setIsSignup(!isSignup);
-              setError("");
-              setMessage("");
-            }}
-            className="font-semibold text-indigo-600 hover:underline"
-          >
-            {isSignup ? "Login" : "Create account"}
-          </button>
+          {isForgotPassword ? (
+            <button
+              type="button"
+              onClick={resetView}
+              className="font-semibold text-indigo-600 hover:underline"
+            >
+              Back to Login
+            </button>
+          ) : (
+            <>
+              {isSignup ? "Already registered?" : "New to Padhatoz?"}{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSignup(!isSignup);
+                  setError("");
+                  setMessage("");
+                }}
+                className="font-semibold text-indigo-600 hover:underline"
+              >
+                {isSignup ? "Login" : "Create account"}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </main>

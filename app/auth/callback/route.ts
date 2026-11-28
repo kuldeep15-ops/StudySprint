@@ -6,14 +6,24 @@ export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const origin = request.nextUrl.origin;
 
+  const next = request.nextUrl.searchParams.get("next");
+
+  // Only allow safe internal redirect paths.
+  const safeNext =
+    next && next.startsWith("/") && !next.startsWith("//")
+      ? next
+      : "/";
+
   if (code) {
     const supabase = await createSupabaseServerClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      return NextResponse.redirect(`${origin}/`);
+      return NextResponse.redirect(`${origin}${safeNext}`);
     }
   }
 
-  return NextResponse.redirect(`${origin}/auth?error=verification_failed`);
+  return NextResponse.redirect(
+    `${origin}/auth?error=verification_failed`
+  );
 }
