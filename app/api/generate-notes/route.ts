@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { NextResponse } from "next/server";
 import { createHash, createHmac, randomUUID } from "crypto";
@@ -9,6 +8,8 @@ export const maxDuration = 300;
 
 const RATE_LIMIT_WINDOW_SECONDS = 60 * 60;
 const STUDENT_FREE_LIMIT = 7;
+const IP_HOURLY_LIMIT = 100;
+const PAID_HOURLY_LIMIT = 30;
 const PROMPT_VERSION = "notes-v2";
 
 const MODELS = [
@@ -510,47 +511,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const rateLimit = await checkGenerationRateLimit(
-    ipHash,
-    controls.hourlyLimit
-  );
-
-  if (!rateLimit) {
-    return NextResponse.json(
-      {
-        error: "Unable to verify AI usage limit. Please try again later.",
-      },
-      { status: 503 }
-    );
-  }
-
-  if (!rateLimit.allowed) {
-    const resetTimestamp = new Date(rateLimit.resetAt).getTime();
-
-    const retryAfter = Number.isFinite(resetTimestamp)
-      ? Math.max(1, Math.ceil((resetTimestamp - Date.now()) / 1000))
-      : RATE_LIMIT_WINDOW_SECONDS;
-
-    return NextResponse.json(
-      {
-        error:
-          "Hourly AI generation limit reached. You can try again after your limit resets.",
-        limit: controls.hourlyLimit,
-        remaining: 0,
-        resetAt: rateLimit.resetAt,
-      },
-      {
-        status: 429,
-        headers: {
-          "Retry-After": String(retryAfter),
-          "X-RateLimit-Limit": String(controls.hourlyLimit),
-          "X-RateLimit-Remaining": "0",
-        },
-      }
-    );
-  }
-
-  // Cache lookup happens before any credit reservation.
+  // Cache lookup happens before hourly counters and credit reservation.
   const cacheKey = getCacheKey(
     subjectCode,
     subjectName,
@@ -594,11 +555,105 @@ export async function POST(request: Request) {
       freeRemaining,
       paidRemaining,
       {
-        "X-RateLimit-Limit": String(controls.hourlyLimit),
-        "X-RateLimit-Remaining": String(rateLimit.remaining),
         "X-Free-Generations-Limit": String(STUDENT_FREE_LIMIT),
         "X-Free-Generations-Remaining": String(freeRemaining),
         "X-Paid-Generations-Remaining": String(paidRemaining),
+      }
+    );
+  }
+
+  // Count only real AI generation requests, not cache hits.
+  const paidCreditsBeforeGeneration =
+    await getStudentPaidRemainingCredits(user.id);
+
+  const accountHourlyLimit =
+    paidCreditsBeforeGeneration > 0
+      ? PAID_HOURLY_LIMIT
+      : STUDENT_FREE_LIMIT;
+
+  // IP-level protection is independent of the student's account limit.
+  const ipRateLimit = await checkGenerationRateLimit(
+    ipHash,
+    IP_HOURLY_LIMIT
+  );
+
+  if (!ipRateLimit) {
+    return NextResponse.json(
+      {
+        error: "Unable to verify AI usage limit. Please try again later.",
+      },
+      { status: 503 }
+    );
+  }
+
+  if (!ipRateLimit.allowed) {
+    const resetTimestamp = new Date(ipRateLimit.resetAt).getTime();
+
+    const retryAfter = Number.isFinite(resetTimestamp)
+      ? Math.max(1, Math.ceil((resetTimestamp - Date.now()) / 1000))
+      : RATE_LIMIT_WINDOW_SECONDS;
+
+    return NextResponse.json(
+      {
+        error:
+          "Hourly request limit reached. You can try again after your limit resets.",
+        limit: IP_HOURLY_LIMIT,
+        remaining: 0,
+        resetAt: ipRateLimit.resetAt,
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(retryAfter),
+          "X-RateLimit-Limit": String(IP_HOURLY_LIMIT),
+          "X-RateLimit-Remaining": "0",
+        },
+      }
+    );
+  }
+
+  const { data: accountRateData, error: accountRateError } =
+    await supabaseAdmin.rpc("check_student_ai_hourly_rate_limit", {
+      p_student_id: user.id,
+      p_limit: accountHourlyLimit,
+    });
+
+  const accountRate = Array.isArray(accountRateData)
+    ? accountRateData[0]
+    : accountRateData;
+
+  if (
+    accountRateError ||
+    !accountRate ||
+    typeof accountRate.allowed !== "boolean" ||
+    typeof accountRate.remaining !== "number"
+  ) {
+    console.error(
+      "Student AI hourly limit check failed:",
+      accountRateError?.message
+    );
+
+    return NextResponse.json(
+      {
+        error: "Unable to verify your AI usage limit. Please try again.",
+      },
+      { status: 503 }
+    );
+  }
+
+  if (!accountRate.allowed) {
+    return NextResponse.json(
+      {
+        error: `Your hourly AI generation limit of ${accountHourlyLimit} has been reached. Please try again later.`,
+        limit: accountHourlyLimit,
+        remaining: 0,
+      },
+      {
+        status: 429,
+        headers: {
+          "X-RateLimit-Limit": String(accountHourlyLimit),
+          "X-RateLimit-Remaining": "0",
+        },
       }
     );
   }
@@ -644,7 +699,7 @@ export async function POST(request: Request) {
     studentUsageId = freeUsage.usage_id;
     creditType = "free";
   } else {
-    // Free credits exhausted: try reserving a purchased credit.
+    // Free credits exhausted or transferred: try reserving a purchased credit.
     const { data: paidUsageData, error: paidUsageError } =
       await supabaseAdmin.rpc("reserve_student_paid_ai_credit", {
         p_student_id: user.id,
@@ -1147,8 +1202,8 @@ FINAL CHECK:
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
       "X-Accel-Buffering": "no",
-      "X-RateLimit-Limit": String(controls.hourlyLimit),
-      "X-RateLimit-Remaining": String(rateLimit.remaining),
+      "X-RateLimit-Limit": String(accountHourlyLimit),
+      "X-RateLimit-Remaining": String(accountRate.remaining),
       "X-Free-Generations-Limit": String(STUDENT_FREE_LIMIT),
       "X-Free-Generations-Remaining": String(freeRemaining),
       "X-Paid-Generations-Remaining": String(paidRemaining),

@@ -1,5 +1,5 @@
-
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { createSupabaseServerClient } from "@/app/lib/supabaseServer";
 import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
 import {
@@ -35,6 +35,25 @@ type GenerationLog = {
   error_message: string | null;
 };
 
+type VisitorSession = {
+  session_id: string;
+  visitor_id: string | null;
+  user_id: string | null;
+  started_at: string;
+  last_seen_at: string;
+  ended_at: string | null;
+  page_count: number;
+};
+
+type RegisteredUser = {
+  id: string;
+  email: string | undefined;
+  created_at: string;
+  email_confirmed_at: string | undefined;
+  last_sign_in_at: string | undefined;
+  app_metadata?: { provider?: string };
+};
+
 type CreditPlan = {
   id: string;
   name: string;
@@ -61,6 +80,19 @@ function formatDate(value: string) {
   });
 }
 
+function formatDuration(milliseconds: number) {
+  const totalMinutes = Math.max(0, Math.floor(milliseconds / 60000));
+
+  if (totalMinutes < 1) return "Less than 1 min";
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) return `${minutes} min`;
+
+  return `${hours}h ${minutes}m`;
+}
+
 function StatCard({
   title,
   value,
@@ -73,9 +105,11 @@ function StatCard({
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <p className="text-sm font-medium text-slate-500">{title}</p>
+
       <p className="mt-2 break-words text-2xl font-black text-slate-900">
         {value}
       </p>
+
       <p className="mt-1 text-xs text-slate-500">{description}</p>
     </section>
   );
@@ -105,6 +139,7 @@ function PlanInput({
       <label className="mb-2 block text-sm font-semibold text-slate-700">
         {label}
       </label>
+
       <input
         name={name}
         type={type}
@@ -139,7 +174,10 @@ export default async function AdminDashboard({
     redirect("/admin/login");
   }
 
+  await connection();
+
   const params = await searchParams;
+
   const settingsMessage = params?.settings;
   const plansMessage = params?.plans;
 
@@ -148,6 +186,10 @@ export default async function AdminDashboard({
     logsResult,
     settingsResult,
     plansResult,
+    visitorCountResult,
+    visitorSessionsResult,
+    pageviewsResult,
+    authUsersResult,
   ] = await Promise.all([
     supabaseAdmin
       .from("ai_generation_logs")
@@ -171,10 +213,34 @@ export default async function AdminDashboard({
       .select("*")
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false }),
+
+    supabaseAdmin
+      .from("visitor_sessions")
+      .select("session_id", { count: "exact", head: true }),
+
+    supabaseAdmin
+      .from("visitor_sessions")
+      .select(
+        "session_id, visitor_id, user_id, started_at, last_seen_at, ended_at, page_count"
+      )
+      .order("last_seen_at", { ascending: false })
+      .limit(10000),
+
+    supabaseAdmin
+      .from("visitor_pageviews")
+      .select("path, viewed_at")
+      .order("viewed_at", { ascending: false })
+      .limit(1000),
+
+    supabaseAdmin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
+    }),
   ]);
 
   const logs = (logsResult.data ?? []) as GenerationLog[];
   const plans = (plansResult.data ?? []) as CreditPlan[];
+
   const totalGenerations = countResult.count ?? 0;
 
   const settings = settingsResult.data ?? [];
@@ -198,9 +264,17 @@ export default async function AdminDashboard({
       ? hourlyLimitSetting
       : 5;
 
-  const successCount = logs.filter((log) => log.status === "success").length;
-  const failedCount = logs.filter((log) => log.status === "failed").length;
-  const startedCount = logs.filter((log) => log.status === "started").length;
+  const successCount = logs.filter(
+    (log) => log.status === "success"
+  ).length;
+
+  const failedCount = logs.filter(
+    (log) => log.status === "failed"
+  ).length;
+
+  const startedCount = logs.filter(
+    (log) => log.status === "started"
+  ).length;
 
   const totalInputTokens = logs.reduce(
     (sum, log) => sum + (log.input_tokens ?? 0),
@@ -221,13 +295,20 @@ export default async function AdminDashboard({
     .map((log) => log.estimated_cost_usd)
     .filter((cost): cost is number => cost !== null);
 
-  const estimatedCost = knownCosts.reduce((sum, cost) => sum + cost, 0);
+  const estimatedCost = knownCosts.reduce(
+    (sum, cost) => sum + cost,
+    0
+  );
 
   const modelStats = new Map<string, number>();
 
   for (const log of logs) {
     const model = log.model || "Unknown";
-    modelStats.set(model, (modelStats.get(model) ?? 0) + 1);
+
+    modelStats.set(
+      model,
+      (modelStats.get(model) ?? 0) + 1
+    );
   }
 
   const models = Array.from(modelStats.entries()).sort(
@@ -238,6 +319,7 @@ export default async function AdminDashboard({
 
   const dailyStats = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(today);
+
     date.setHours(0, 0, 0, 0);
     date.setDate(date.getDate() - (6 - index));
 
@@ -246,6 +328,7 @@ export default async function AdminDashboard({
 
     const count = logs.filter((log) => {
       const created = new Date(log.created_at);
+
       return created >= date && created < nextDate;
     }).length;
 
@@ -265,6 +348,81 @@ export default async function AdminDashboard({
 
   const recentLogs = logs.slice(0, 20);
 
+  // VISITOR ANALYTICS DATA
+
+  const visitorSessions = (
+    visitorSessionsResult.data ?? []
+  ) as VisitorSession[];
+
+  const pageviews = pageviewsResult.data ?? [];
+
+  // REGISTERED USERS DATA
+
+  const registeredUsers = (
+    authUsersResult.data?.users ?? []
+  ) as RegisteredUser[];
+
+  const userEmailById = new Map(
+    registeredUsers.map((registeredUser) => [
+      registeredUser.id,
+      registeredUser.email || "Email unavailable",
+    ])
+  );
+
+  // ACTIVE VISITORS
+
+  const activeCutoff = new Date().getTime() - 5 * 60 * 1000;
+
+  const activeVisitors = visitorSessions.filter(
+    (session) =>
+      !session.ended_at &&
+      new Date(session.last_seen_at).getTime() >= activeCutoff
+  ).length;
+
+  // UNIQUE VISITORS
+
+  const uniqueVisitorCount = new Set(
+    visitorSessions
+      .map((session) => session.visitor_id)
+      .filter(Boolean)
+  ).size;
+
+  // AVERAGE SESSION DURATION
+
+  const averageSessionMs =
+    visitorSessions.length > 0
+      ? visitorSessions.reduce((sum, session) => {
+          const endTime =
+            session.ended_at || session.last_seen_at;
+
+          return (
+            sum +
+            Math.max(
+              0,
+              new Date(endTime).getTime() -
+                new Date(session.started_at).getTime()
+            )
+          );
+        }, 0) / visitorSessions.length
+      : 0;
+
+  // MOST VISITED PAGES
+
+  const pageCounts = new Map<string, number>();
+
+  for (const pageview of pageviews) {
+    pageCounts.set(
+      pageview.path,
+      (pageCounts.get(pageview.path) ?? 0) + 1
+    );
+  }
+
+  const popularPages = Array.from(pageCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8);
+
+  const recentVisitorSessions = visitorSessions.slice(0, 20);
+
   return (
     <main className="min-h-screen bg-slate-100">
       <header className="border-b border-slate-200 bg-white">
@@ -273,6 +431,7 @@ export default async function AdminDashboard({
             <h1 className="text-2xl font-black text-slate-900">
               padhatoz Admin
             </h1>
+
             <p className="text-sm text-slate-500">
               Private Administration Panel
             </p>
@@ -294,6 +453,7 @@ export default async function AdminDashboard({
           <h2 className="text-xl font-bold text-slate-900">
             Dashboard Overview
           </h2>
+
           <p className="mt-1 text-sm text-slate-500">
             AI generation analytics and system usage.
           </p>
@@ -347,7 +507,9 @@ export default async function AdminDashboard({
           </div>
         )}
 
-        {countResult.error || logsResult.error || settingsResult.error ? (
+        {countResult.error ||
+        logsResult.error ||
+        settingsResult.error ? (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             Some dashboard data could not be loaded. Check Supabase configuration.
           </div>
@@ -359,12 +521,256 @@ export default async function AdminDashboard({
           </div>
         )}
 
+        {/* WEBSITE VISITOR ANALYTICS */}
+
+        <section className="space-y-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">
+              Website Visitor Analytics
+            </h3>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Visits, active sessions and estimated time spent on Padhatoz.
+            </p>
+          </div>
+
+          {visitorCountResult.error ||
+          visitorSessionsResult.error ||
+          pageviewsResult.error ? (
+            <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+              Visitor analytics could not be fully loaded. Check visitor_sessions and visitor_pageviews tables.
+            </p>
+          ) : null}
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              title="Total Visits"
+              value={formatNumber(visitorCountResult.count ?? 0)}
+              description="Recorded browsing sessions"
+            />
+
+            <StatCard
+              title="Unique Visitors"
+              value={formatNumber(uniqueVisitorCount)}
+              description="Distinct browser visitor IDs (latest 10,000 sessions)"
+            />
+
+            <StatCard
+              title="Active Visitors"
+              value={formatNumber(activeVisitors)}
+              description="Sessions seen in the last 5 minutes"
+            />
+
+            <StatCard
+              title="Avg. Session Duration"
+              value={
+                visitorSessions.length
+                  ? formatDuration(averageSessionMs)
+                  : "—"
+              }
+              description="Estimated from start to last seen / end"
+            />
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-2">
+            <div>
+              <h4 className="mb-3 font-bold text-slate-800">
+                Most Visited Pages
+              </h4>
+
+              {popularPages.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  No pageviews recorded yet.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {popularPages.map(([path, count]) => (
+                    <div
+                      key={path}
+                      className="flex items-center justify-between gap-3 text-sm"
+                    >
+                      <span className="min-w-0 truncate text-slate-700">
+                        {path}
+                      </span>
+
+                      <span className="shrink-0 font-semibold tabular-nums text-slate-600">
+                        {formatNumber(count)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <p className="mt-2 text-xs text-slate-400">
+                Based on latest 1,000 pageviews.
+              </p>
+            </div>
+
+            <div>
+              <h4 className="mb-3 font-bold text-slate-800">
+                Recent Visitor Sessions
+              </h4>
+
+              {recentVisitorSessions.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  No visitor sessions recorded yet.
+                </p>
+              ) : (
+                <div className="max-h-80 space-y-3 overflow-y-auto">
+                  {recentVisitorSessions.map((session) => {
+                    const endTime =
+                      session.ended_at || session.last_seen_at;
+
+                    const duration =
+                      new Date(endTime).getTime() -
+                      new Date(session.started_at).getTime();
+
+                    return (
+                      <div
+                        key={session.session_id}
+                        className="rounded-lg border border-slate-100 p-3"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-slate-800">
+                            {session.user_id
+                              ? userEmailById.get(session.user_id) ||
+                                "Registered user"
+                              : "Guest visitor"}
+                          </span>
+
+                          <span
+                            className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
+                              !session.ended_at &&
+                              new Date(session.last_seen_at).getTime() >=
+                                activeCutoff
+                                ? "bg-green-100 text-green-700"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {!session.ended_at &&
+                            new Date(session.last_seen_at).getTime() >=
+                              activeCutoff
+                              ? "Active"
+                              : "Inactive"}
+                          </span>
+                        </div>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          Started: {formatDate(session.started_at)} · Last
+                          seen: {formatDate(session.last_seen_at)}
+                        </p>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          Estimated duration: {formatDuration(duration)} ·
+                          Pages: {session.page_count}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-400">
+            Duration is approximate. A browser closing unexpectedly may leave
+            a session without an exact end time.
+          </p>
+        </section>
+
+        {/* REGISTERED USER DIRECTORY */}
+
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 p-5">
+            <h3 className="text-lg font-bold text-slate-900">
+              Registered Users
+            </h3>
+
+            <p className="mt-1 text-sm text-slate-500">
+              {formatNumber(registeredUsers.length)} users loaded from
+              Supabase Auth (maximum 1,000).
+            </p>
+          </div>
+
+          {authUsersResult.error ? (
+            <p className="p-5 text-sm text-red-700">
+              Registered users could not be loaded. Check the Supabase
+              service-role permissions.
+            </p>
+          ) : registeredUsers.length === 0 ? (
+            <p className="p-5 text-sm text-slate-500">
+              No registered users found.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[850px] text-left text-sm">
+                <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                  <tr>
+                    <th className="px-5 py-3">Email</th>
+                    <th className="px-5 py-3">Provider</th>
+                    <th className="px-5 py-3">Registered</th>
+                    <th className="px-5 py-3">Email Verification</th>
+                    <th className="px-5 py-3">Last Sign-in</th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-slate-100">
+                  {registeredUsers.map((registeredUser) => (
+                    <tr key={registeredUser.id}>
+                      <td className="px-5 py-4 font-medium text-slate-800">
+                        {registeredUser.email || "Email unavailable"}
+                      </td>
+
+                      <td className="px-5 py-4 text-slate-600">
+                        {registeredUser.app_metadata?.provider || "email"}
+                      </td>
+
+                      <td className="whitespace-nowrap px-5 py-4 text-slate-600">
+                        {formatDate(registeredUser.created_at)}
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            registeredUser.email_confirmed_at
+                              ? "bg-green-100 text-green-700"
+                              : "bg-amber-100 text-amber-700"
+                          }`}
+                        >
+                          {registeredUser.email_confirmed_at
+                            ? "Verified"
+                            : "Not verified"}
+                        </span>
+                      </td>
+
+                      <td className="whitespace-nowrap px-5 py-4 text-slate-600">
+                        {registeredUser.last_sign_in_at
+                          ? formatDate(registeredUser.last_sign_in_at)
+                          : "Never"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <p className="border-t border-slate-100 px-5 py-3 text-xs text-slate-400">
+            Passwords are never displayed or accessible here. Multiple
+            accounts belonging to one person cannot be reliably identified
+            from email addresses alone.
+          </p>
+        </section>
+
+        {/* AI SYSTEM CONTROLS */}
+
         <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="text-lg font-bold text-slate-900">
                 AI System Controls
               </h3>
+
               <p className="mt-1 text-sm text-slate-500">
                 Control public AI notes generation.
               </p>
@@ -396,8 +802,13 @@ export default async function AdminDashboard({
                 defaultValue={String(aiEnabled)}
                 className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-blue-500 sm:max-w-xs"
               >
-                <option value="true">Enabled — Students can generate notes</option>
-                <option value="false">Disabled — Stop all new generations</option>
+                <option value="true">
+                  Enabled — Students can generate notes
+                </option>
+
+                <option value="false">
+                  Disabled — Stop all new generations
+                </option>
               </select>
             </div>
 
@@ -436,6 +847,7 @@ export default async function AdminDashboard({
         </section>
 
         {/* CREDIT PLAN MANAGEMENT */}
+
         <section
           id="credit-plans"
           className="space-y-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
@@ -444,20 +856,27 @@ export default async function AdminDashboard({
             <h3 className="text-lg font-bold text-slate-900">
               AI Credit Plans
             </h3>
+
             <p className="mt-1 text-sm text-slate-500">
-              Create and manage the paid AI notes credit packages available to students.
+              Create and manage the paid AI notes credit packages available
+              to students.
             </p>
           </div>
 
           <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
-            <h4 className="font-bold text-slate-900">Create New Plan</h4>
+            <h4 className="font-bold text-slate-900">
+              Create New Plan
+            </h4>
+
             <p className="mt-1 text-xs text-slate-600">
-              Price is in INR. Students will see this plan when they run out of free credits.
+              Price is in INR. Students will see this plan when they run out
+              of free credits.
             </p>
 
             <form action={createCreditPlan} className="mt-5 space-y-4">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <PlanInput label="Plan Name" name="name" />
+
                 <PlanInput
                   label="Price (₹)"
                   name="price"
@@ -465,6 +884,7 @@ export default async function AdminDashboard({
                   min="1"
                   step="0.01"
                 />
+
                 <PlanInput
                   label="AI Credits"
                   name="credits"
@@ -472,6 +892,7 @@ export default async function AdminDashboard({
                   min="1"
                   max="10000"
                 />
+
                 <PlanInput
                   label="Validity (Days)"
                   name="validityDays"
@@ -479,6 +900,7 @@ export default async function AdminDashboard({
                   min="1"
                   max="3650"
                 />
+
                 <PlanInput
                   label="Display Order"
                   name="sortOrder"
@@ -493,6 +915,7 @@ export default async function AdminDashboard({
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Description
                 </label>
+
                 <textarea
                   name="description"
                   rows={2}
@@ -508,6 +931,7 @@ export default async function AdminDashboard({
                   name="isFeatured"
                   className="h-4 w-4 rounded border-slate-300"
                 />
+
                 Mark as featured plan
               </label>
 
@@ -525,6 +949,7 @@ export default async function AdminDashboard({
               <h4 className="font-bold text-slate-900">
                 Existing Plans ({plans.length})
               </h4>
+
               <p className="text-xs text-slate-500">
                 Active plans can be offered to students.
               </p>
@@ -535,6 +960,7 @@ export default async function AdminDashboard({
                 <p className="font-semibold text-slate-700">
                   No credit plans created yet.
                 </p>
+
                 <p className="mt-1 text-sm text-slate-500">
                   Create your first plan using the form above.
                 </p>
@@ -579,7 +1005,11 @@ export default async function AdminDashboard({
                     </div>
 
                     <form action={updateCreditPlan} className="space-y-4">
-                      <input type="hidden" name="id" value={plan.id} />
+                      <input
+                        type="hidden"
+                        name="id"
+                        value={plan.id}
+                      />
 
                       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         <PlanInput
@@ -587,6 +1017,7 @@ export default async function AdminDashboard({
                           name="name"
                           defaultValue={plan.name}
                         />
+
                         <PlanInput
                           label="Price (₹)"
                           name="price"
@@ -595,6 +1026,7 @@ export default async function AdminDashboard({
                           step="0.01"
                           defaultValue={(plan.price_paise / 100).toFixed(2)}
                         />
+
                         <PlanInput
                           label="AI Credits"
                           name="credits"
@@ -603,6 +1035,7 @@ export default async function AdminDashboard({
                           max="10000"
                           defaultValue={plan.credits}
                         />
+
                         <PlanInput
                           label="Validity (Days)"
                           name="validityDays"
@@ -611,6 +1044,7 @@ export default async function AdminDashboard({
                           max="3650"
                           defaultValue={plan.validity_days}
                         />
+
                         <PlanInput
                           label="Display Order"
                           name="sortOrder"
@@ -625,6 +1059,7 @@ export default async function AdminDashboard({
                         <label className="mb-2 block text-sm font-semibold text-slate-700">
                           Description
                         </label>
+
                         <textarea
                           name="description"
                           rows={2}
@@ -642,6 +1077,7 @@ export default async function AdminDashboard({
                             defaultChecked={plan.is_active}
                             className="h-4 w-4 rounded border-slate-300"
                           />
+
                           Active
                         </label>
 
@@ -652,6 +1088,7 @@ export default async function AdminDashboard({
                             defaultChecked={plan.is_featured}
                             className="h-4 w-4 rounded border-slate-300"
                           />
+
                           Featured
                         </label>
                       </div>
@@ -666,7 +1103,12 @@ export default async function AdminDashboard({
 
                     <div className="mt-4 border-t border-slate-100 pt-4">
                       <form action={deleteCreditPlan}>
-                        <input type="hidden" name="id" value={plan.id} />
+                        <input
+                          type="hidden"
+                          name="id"
+                          value={plan.id}
+                        />
+
                         <button
                           type="submit"
                           className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
@@ -682,6 +1124,8 @@ export default async function AdminDashboard({
           </div>
         </section>
 
+        {/* AI USAGE */}
+
         <section>
           <h3 className="mb-4 text-lg font-bold text-slate-900">
             AI Usage
@@ -693,16 +1137,19 @@ export default async function AdminDashboard({
               value={formatNumber(totalGenerations)}
               description="All recorded requests"
             />
+
             <StatCard
               title="Successful"
               value={formatNumber(successCount)}
               description="Success in latest 1,000 records"
             />
+
             <StatCard
               title="Failed"
               value={formatNumber(failedCount)}
               description="Failed in latest 1,000 records"
             />
+
             <StatCard
               title="In Progress"
               value={formatNumber(startedCount)}
@@ -710,6 +1157,8 @@ export default async function AdminDashboard({
             />
           </div>
         </section>
+
+        {/* TOKEN AND COST ANALYTICS */}
 
         <section>
           <h3 className="mb-4 text-lg font-bold text-slate-900">
@@ -722,16 +1171,19 @@ export default async function AdminDashboard({
               value={formatNumber(totalTokens)}
               description="Latest 1,000 records"
             />
+
             <StatCard
               title="Input Tokens"
               value={formatNumber(totalInputTokens)}
               description="Latest 1,000 records"
             />
+
             <StatCard
               title="Output Tokens"
               value={formatNumber(totalOutputTokens)}
               description="Latest 1,000 records"
             />
+
             <StatCard
               title="Estimated API Cost"
               value={
@@ -748,10 +1200,13 @@ export default async function AdminDashboard({
           </div>
         </section>
 
+        {/* DAILY GENERATIONS */}
+
         <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h3 className="text-lg font-bold text-slate-900">
             Daily Generations
           </h3>
+
           <p className="mb-6 mt-1 text-sm text-slate-500">
             Last 7 days, based on latest 1,000 records.
           </p>
@@ -765,6 +1220,7 @@ export default async function AdminDashboard({
                 <span className="text-xs font-semibold text-slate-600">
                   {day.count}
                 </span>
+
                 <div className="flex h-32 w-full items-end">
                   <div
                     className="w-full rounded-t-md bg-blue-600"
@@ -776,6 +1232,7 @@ export default async function AdminDashboard({
                     }}
                   />
                 </div>
+
                 <span className="text-center text-xs text-slate-500">
                   {day.label}
                 </span>
@@ -784,16 +1241,21 @@ export default async function AdminDashboard({
           </div>
         </section>
 
+        {/* MODEL ANALYTICS */}
+
         <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h3 className="text-lg font-bold text-slate-900">
             Model Analytics
           </h3>
+
           <p className="mb-5 mt-1 text-sm text-slate-500">
             Model-wise generation count in latest 1,000 records.
           </p>
 
           {models.length === 0 ? (
-            <p className="text-sm text-slate-500">No model data available.</p>
+            <p className="text-sm text-slate-500">
+              No model data available.
+            </p>
           ) : (
             <div className="space-y-4">
               {models.map(([model, count]) => (
@@ -802,15 +1264,19 @@ export default async function AdminDashboard({
                     <span className="font-semibold text-slate-800">
                       {model}
                     </span>
+
                     <span className="text-slate-500">
                       {formatNumber(count)} generations
                     </span>
                   </div>
+
                   <div className="h-2 overflow-hidden rounded-full bg-slate-100">
                     <div
                       className="h-full rounded-full bg-blue-600"
                       style={{
-                        width: `${(count / Math.max(logs.length, 1)) * 100}%`,
+                        width: `${
+                          (count / Math.max(logs.length, 1)) * 100
+                        }%`,
                       }}
                     />
                   </div>
@@ -820,11 +1286,14 @@ export default async function AdminDashboard({
           )}
         </section>
 
+        {/* RECENT GENERATION HISTORY */}
+
         <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 p-5">
             <h3 className="text-lg font-bold text-slate-900">
               Recent Generation History
             </h3>
+
             <p className="mt-1 text-sm text-slate-500">
               Latest 20 AI generation requests.
             </p>
@@ -847,31 +1316,40 @@ export default async function AdminDashboard({
                     <th className="px-5 py-3">Status</th>
                   </tr>
                 </thead>
+
                 <tbody className="divide-y divide-slate-100">
                   {recentLogs.map((log) => (
                     <tr key={log.id}>
                       <td className="whitespace-nowrap px-5 py-4 text-slate-600">
                         {formatDate(log.created_at)}
                       </td>
+
                       <td className="max-w-xs px-5 py-4">
                         <p className="font-semibold text-slate-800">
-                          {log.subject_name || log.subject_code || "Unknown"}
+                          {log.subject_name ||
+                            log.subject_code ||
+                            "Unknown"}
                         </p>
+
                         <p className="truncate text-xs text-slate-500">
                           {log.topic || log.unit_title || "No topic"}
                         </p>
                       </td>
+
                       <td className="px-5 py-4 text-slate-600">
                         {log.model || "Unknown"}
                       </td>
+
                       <td className="px-5 py-4 tabular-nums text-slate-600">
                         {formatNumber(log.total_tokens ?? 0)}
                       </td>
+
                       <td className="px-5 py-4 text-slate-600">
                         {log.duration_ms !== null
                           ? `${(log.duration_ms / 1000).toFixed(1)}s`
                           : "—"}
                       </td>
+
                       <td className="px-5 py-4">
                         <span
                           className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
